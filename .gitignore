@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# next.js build outputs
+.next/
+out/
+
+# env and private files
+.env
+.env.*
+*.pem
+*.key
+
+# local uploads and private storage
+uploads/
+storage/
+private/
+
+# design-skill working files and OS noise
+.taste-skill/
+.DS_Store
+Thumbs.db
+*.log
