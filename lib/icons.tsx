@@ -89,13 +89,22 @@ export const CheckIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-// The product mark: a page with its margin line drawn in the accent.
+export const SettingsIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h9M17 17h3" />
+    <circle cx="15" cy="7" r="2" />
+    <circle cx="9" cy="12" r="2" />
+    <circle cx="15" cy="17" r="2" />
+  </svg>
+);
+
+// The product mark: a page whose margin carries the accent ink (its strokes are themed in CSS).
 export const Mark = ({ size = 22 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
-    <rect x="3.25" y="2.25" width="17.5" height="19.5" rx="2.75" stroke="#111827" strokeWidth="1.5" />
-    <line x1="8.5" y1="6.5" x2="8.5" y2="17.5" stroke="#b8336a" strokeWidth="2" strokeLinecap="round" />
-    <line x1="11.5" y1="9" x2="16.5" y2="9" stroke="#b8336a" strokeWidth="1.5" strokeLinecap="round" />
-    <line x1="11.5" y1="13" x2="15" y2="13" stroke="#b8336a" strokeWidth="1.5" strokeLinecap="round" />
+  <svg className="mark" width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+    <rect className="mark-page" x="3.25" y="2.25" width="17.5" height="19.5" rx="2.75" strokeWidth="1.5" />
+    <line className="mark-rail" x1="8.5" y1="6.5" x2="8.5" y2="17.5" strokeWidth="2" />
+    <line className="mark-line" x1="11.5" y1="9" x2="16.5" y2="9" strokeWidth="1.5" />
+    <line className="mark-line" x1="11.5" y1="13" x2="15" y2="13" strokeWidth="1.5" />
   </svg>
 );
 

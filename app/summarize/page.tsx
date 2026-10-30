@@ -1,5 +1,8 @@
 import AppShell from "../app-shell";
-import { PenIcon, TextIcon, SaveIcon } from "@/lib/icons";
+import { PenIcon, TextIcon, SaveIcon, DocIcon } from "@/lib/icons";
+import { items } from "@/lib/data";
+
+const recent = items[0];
 
 /*
 
@@ -19,12 +22,12 @@ const SUMMARY_WORDS = 53; // count of the five key points below
 const SOURCE_REF = Math.round(SOURCE_WORDS * (1 - SUMMARY_WORDS / SOURCE_WORDS)); // words dropped
 const KEPT_PCT = Math.round((SUMMARY_WORDS / SOURCE_WORDS) * 100); // 34
 
-const points: Array<{ lead: string; rest: string; ref: string }> = [
+const points: Array<{ lead: string; rest: string; ref: string; exam?: boolean }> = [
   { lead: "Three stages.", rest: " Glycolysis, the Krebs cycle, then the electron transport chain.", ref: "¶1–2" },
   { lead: "Glycolysis nets 2 ATP,", rest: " splitting glucose into two pyruvates.", ref: "¶3" },
   { lead: "NADH carries energy", rest: " from the Krebs cycle to the transport chain, which pumps protons.", ref: "¶4–6" },
-  { lead: "ATP synthase", rest: " is driven by the proton gradient.", ref: "¶6" },
-  { lead: "Oxygen is required;", rest: " without it, fermentation yields 2 ATP per glucose.", ref: "¶7–8" },
+  { lead: "ATP synthase", rest: " is driven by the proton gradient.", ref: "¶6", exam: true },
+  { lead: "Oxygen is required;", rest: " without it, fermentation yields 2 ATP per glucose.", ref: "¶7–8", exam: true },
 ];
 
 export default function SummarizePage() {
@@ -96,6 +99,7 @@ export default function SummarizePage() {
                     <b>{p.lead}</b>
                     {p.rest}{" "}
                     <span className="point-ref">{p.ref}</span>
+                    {p.exam ? <span className="pill warn">Exam</span> : null}
                   </span>
                 </li>
               ))}
@@ -138,6 +142,21 @@ export default function SummarizePage() {
               <p className="hint">
                 Source and summary are saved together, and both show under Save.
               </p>
+              <div className="recent">
+                <p className="reclabel">Recently kept</p>
+                <div className="item">
+                  <span className="body">
+                    <b>
+                      <DocIcon />
+                      <a href={`#item-${recent.id}`} className="t">{recent.title}</a>
+                    </b>
+                    <span className="meta num">
+                      {recent.ext} · {recent.size} · {recent.points} key points
+                    </span>
+                  </span>
+                  <span className="date">{recent.saved}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

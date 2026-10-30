@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mark, SummarizeIcon, SaveIcon, MenuIcon, CloseIcon } from "@/lib/icons";
+import { Mark, SummarizeIcon, SaveIcon, MenuIcon, CloseIcon, SettingsIcon } from "@/lib/icons";
 
 /**
  * The open-plane shell: a labelled sidebar on the page ground (desktop), which folds
@@ -11,10 +11,11 @@ export default function AppShell({
   screen,
   children,
 }: {
-  screen: "summarize" | "save";
+  screen: "summarize" | "save" | "settings";
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const screenName = { summarize: "Summarize", save: "Library", settings: "Appearance" }[screen];
 
   return (
     <div className="app">
@@ -49,6 +50,10 @@ export default function AppShell({
         </nav>
         <div className="bottom">
           <p className="group-label">Account</p>
+          <a className="nav-item" href="/settings" aria-current={screen === "settings" ? "page" : undefined}>
+            <SettingsIcon />
+            Appearance
+          </a>
           <a className="nav-item" href="/login">
             Log out
           </a>
@@ -59,7 +64,7 @@ export default function AppShell({
           <button className="iconbtn" aria-label="Open menu" onClick={() => setOpen(true)}>
             <MenuIcon />
           </button>
-          <span className="name">{screen === "summarize" ? "Summarize" : "Library"}</span>
+          <span className="name">{screenName}</span>
           {screen === "save" ? (
             <button className="iconbtn" aria-label="Add to library">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" width={20} height={20} aria-hidden>

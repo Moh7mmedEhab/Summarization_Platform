@@ -1,0 +1,79 @@
+/* Margins - palettes
+
+   The base stylesheet (globals.css) carries light + rose as the fallback. Here is every
+   palette in both modes. Scope: attribute selectors, so the same values can be brought to
+   any element (the theme selector's swatch chips put data-accent on themselves).
+
+   Each palette sets exactly four tokens plus the page ground:
+   --accent (the pen, full hue, small marks only), --accent-soft (palest tint, area work),
+   --accent-track (mid tint, badges, bars' track), --accent-ink (readable ink on the tints),
+   --ground (light mode only: one level toward the hue's palest tint).
+   --chart-1 inherits --accent on every palette, so data series follow the theme for free.
+
+   Dark mode keeps the true-neutral ground (#000) and tints wells instead: soft stays a
+   dark well of the hue, track a mid tint, ink a pale ink of the hue. Every ink/soft pair
+   holds >= 4.5:1 (verified numerically; see progress.md). */
+
+/* ---------- rose (default) ---------- */
+[data-accent="rose"] {
+  --accent: #b8336a; --accent-soft: #fdf2f7; --accent-track: #f8dbe8; --accent-ink: #6b1d3e;
+  --ground: #fbf7f8;
+}
+[data-appearance="dark"][data-accent="rose"] {
+  --accent: #e46a99; --accent-soft: #2a1420; --accent-track: #471f31; --accent-ink: #f8d3e3;
+}
+
+/* ---------- lavender ---------- */
+/* Dusty lilac, not the saturated indigo the study flags: the hue reads but stays quiet */
+[data-accent="lavender"] {
+  --accent: #977bbf; --accent-soft: #f4f1f9; --accent-track: #ddd2ec; --accent-ink: #543a70;
+  --ground: #faf8fc;
+}
+[data-appearance="dark"][data-accent="lavender"] {
+  --accent: #ad9ad0; --accent-soft: #221b31; --accent-track: #382a52; --accent-ink: #e2d4f0;
+}
+
+/* ---------- peach ---------- */
+[data-accent="peach"] {
+  --accent: #d2603a; --accent-soft: #fdf4f1; --accent-track: #f9dccd; --accent-ink: #7a3416;
+  --ground: #fdf9f7;
+}
+[data-appearance="dark"][data-accent="peach"] {
+  --accent: #ec9a70; --accent-soft: #2b1c13; --accent-track: #48291a; --accent-ink: #f5d5bd;
+}
+
+/* ---------- berry ---------- */
+[data-accent="berry"] {
+  --accent: #9d2b5f; --accent-soft: #fbf1f5; --accent-track: #efd2e0; --accent-ink: #551a35;
+  --ground: #faf6f8;
+}
+[data-appearance="dark"][data-accent="berry"] {
+  --accent: #d96f9c; --accent-soft: #251520; --accent-track: #3f2030; --accent-ink: #f2cfde;
+}
+
+/* ---------- mint ---------- */
+[data-accent="mint"] {
+  --accent: #1f8a66; --accent-soft: #eef8f3; --accent-track: #cfeadd; --accent-ink: #14573f;
+  --ground: #f7faf8;
+}
+[data-appearance="dark"][data-accent="mint"] {
+  --accent: #5bd3a2; --accent-soft: #16261e; --accent-track: #234134; --accent-ink: #c4ecd9;
+}
+
+/* ---------- sky ---------- */
+[data-accent="sky"] {
+  --accent: #3e7cc2; --accent-soft: #eff5fb; --accent-track: #d4e6f5; --accent-ink: #23517f;
+  --ground: #f8fafc;
+}
+[data-appearance="dark"][data-accent="sky"] {
+  --accent: #7fb5e6; --accent-soft: #18222d; --accent-track: #24384a; --accent-ink: #cfe2f5;
+}
+
+/* ---------- plum ---------- */
+[data-accent="plum"] {
+  --accent: #8d4585; --accent-soft: #f8f1f8; --accent-track: #e9d5e8; --accent-ink: #522550;
+  --ground: #faf8fa;
+}
+[data-appearance="dark"][data-accent="plum"] {
+  --accent: #cf94c8; --accent-soft: #241824; --accent-track: #3b2740; --accent-ink: #e9c9e6;
+}
