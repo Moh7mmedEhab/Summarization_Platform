@@ -7,7 +7,7 @@ import { env } from "@/lib/env";
 
 const listQuerySchema = z.object({
   q: z.string().max(200).optional(),
-  kind: z.enum(["all", "text", "pdf", "docx", "image_set"]).default("all"),
+  kind: z.enum(["all", "text", "pdf", "docx", "image_set", "audio"]).default("all"),
   status: z.enum(["all", "summarized", "draft", "processing", "failed"]).default("all"),
   sort: z.enum(["recent", "oldest", "title"]).default("recent"),
   page: z.coerce.number().int().positive().default(1),

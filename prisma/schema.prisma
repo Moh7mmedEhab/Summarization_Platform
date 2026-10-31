@@ -107,6 +107,8 @@ enum DocumentKind {
   docx
   // a lesson assembled from one or more images + optional pasted text
   image_set
+  // audio-only uploads (e.g. a lecture recording on its own)
+  audio
 }
 
 enum DocumentStatus {

@@ -239,7 +239,7 @@
   },
   "library": {
     "title": "Library",
-    "sub": "{total, plural, one {# item} other {# items}} — {documents} documents, {texts} texts, {images} image sets.",
+    "sub": "{total, plural, one {# item} other {# items}} — {documents} documents, {texts} texts, {images} image sets, {recordings} recordings.",
     "searchLabel": "Search your library",
     "searchPlaceholder": "Search",
     "add": "Add",
@@ -250,7 +250,8 @@
       "text": "Texts",
       "pdf": "Documents",
       "docx": "Documents",
-      "image_set": "Image sets"
+      "image_set": "Image sets",
+      "audio": "Recordings"
     },
     "status": {
       "draft": "No summary yet",

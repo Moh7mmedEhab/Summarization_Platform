@@ -26,7 +26,8 @@ function inputTypeOf(files: UploadedFile[], hasText: boolean): DocumentKind {
   const kinds = new Set(files.map((f) => f.kind));
   if (kinds.has("pdf") || kinds.has("docx")) return "pdf";
   if (kinds.has("image")) return "image_set";
-  if (kinds.has("audio") || hasText || files.length === 0) return "text";
+  // Audio-only uploads are their own kind — a lecture recording is NOT text.
+  if (kinds.has("audio")) return "audio";
   return "text";
 }
 

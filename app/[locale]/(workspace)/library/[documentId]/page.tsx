@@ -23,6 +23,7 @@ const slotIcon = {
   docx: <DocIcon />,
   text: <TextIcon />,
   image_set: <ImageIcon />,
+  audio: <AudioIcon />,
 } as const;
 
 /** Document + its current notes (the summary viewer), over owned data. */

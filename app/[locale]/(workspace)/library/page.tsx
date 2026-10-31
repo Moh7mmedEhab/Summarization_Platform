@@ -8,6 +8,7 @@ import {
   DocIcon,
   TextIcon,
   ImageIcon,
+  AudioIcon,
   PlusIcon,
   SearchIcon,
   TrashIcon,
@@ -28,13 +29,14 @@ type Api = {
   pages: number;
 };
 
-type Filter = "all" | "pdf" | "docx" | "text" | "image_set";
+type Filter = "all" | "pdf" | "docx" | "text" | "image_set" | "audio";
 
 const slotIcon = {
   pdf: <DocIcon />,
   docx: <DocIcon />,
   text: <TextIcon />,
   image_set: <ImageIcon />,
+  audio: <AudioIcon />,
 } as const;
 
 export default function LibraryPage() {
@@ -119,8 +121,9 @@ export default function LibraryPage() {
         docx: data.items.filter((i) => i.inputType === "docx").length,
         text: data.items.filter((i) => i.inputType === "text").length,
         image_set: data.items.filter((i) => i.inputType === "image_set").length,
+        audio: data.items.filter((i) => i.inputType === "audio").length,
       }
-    : { all: 0, pdf: 0, docx: 0, text: 0, image_set: 0 };
+    : { all: 0, pdf: 0, docx: 0, text: 0, image_set: 0, audio: 0 };
 
   return (
     <>
@@ -128,7 +131,7 @@ export default function LibraryPage() {
         <div>
           <h1>{t("title")}</h1>
           <p className="sub num">
-            {data ? t("sub", { total: data.total, documents: counts.pdf + counts.docx, texts: counts.text, images: counts.image_set }) : tCommon("loading")}
+            {data ? t("sub", { total: data.total, documents: counts.pdf + counts.docx, texts: counts.text, images: counts.image_set, recordings: counts.audio }) : tCommon("loading")}
           </p>
         </div>
         <div className="actions">
@@ -153,7 +156,7 @@ export default function LibraryPage() {
         <button className="chip" aria-pressed={filter === "all"} onClick={() => { setFilter("all"); setPage(1); setLoading(true); }}>
           {t("filterAll")} <b className="num">{counts.all}</b>
         </button>
-        {(["pdf", "text", "image_set"] as const).map((k) => (
+        {(["pdf", "text", "image_set", "audio"] as const).map((k) => (
           <button key={k} className="chip" aria-pressed={filter === k} onClick={() => { setFilter(k); setPage(1); setLoading(true); }}>
             {t(`kind.${k}`)} <b className="num">{counts[k]}</b>
           </button>

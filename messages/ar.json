@@ -239,7 +239,7 @@
   },
   "library": {
     "title": "المكتبة",
-    "sub": "{total, plural, one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}} — {documents} مستندات، {texts} نصوص، {images} مجموعات صور.",
+    "sub": "{total, plural, one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}} — {documents} مستندات، {texts} نصوص، {images} مجموعات صور، {recordings} تسجيلات.",
     "searchLabel": "ابحث في مكتبتك",
     "searchPlaceholder": "بحث",
     "add": "إضافة",
@@ -250,7 +250,8 @@
       "text": "نصوص",
       "pdf": "مستندات",
       "docx": "مستندات",
-      "image_set": "مجموعات صور"
+      "image_set": "مجموعات صور",
+      "audio": "تسجيلات"
     },
     "status": {
       "draft": "لا ملخص بعد",
