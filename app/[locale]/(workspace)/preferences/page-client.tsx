@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, usePathname } from "@/lib/i18n/navigation";
 import ThemeControls from "@/components/theme/controls";
 import SummaryNote from "@/components/summary/note";
-import { readTheme, type Theme } from "@/lib/theme";
+import { applyTheme, DEFAULT_THEME, onThemeChange, themeSnapshot, type Theme } from "@/lib/theme";
 import { GlobeIcon } from "@/components/icons";
 
 /*
@@ -41,10 +41,14 @@ export default function PreferencesClient({
   // on the next loads (localStorage is written by the controls below).
   useEffect(() => {
     if (!localStorage.getItem("margins-theme")) {
-      const el = document.documentElement;
-      el.dataset.appearance = initialAppearance;
-      const accents = ACCENT_KEYS as readonly string[];
-      if (accents.includes(initialAccent)) el.dataset.accent = initialAccent;
+      const theme: Theme = {
+        appearance: initialAppearance,
+        accent: ((ACCENT_KEYS as readonly string[]).includes(initialAccent)
+          ? initialAccent
+          : DEFAULT_THEME.accent) as Theme["accent"],
+      };
+      applyTheme(theme);
+      window.dispatchEvent(new Event("margins-theme-change"));
     }
   }, [initialAppearance, initialAccent]);
 
@@ -54,12 +58,9 @@ export default function PreferencesClient({
     router.replace(pathname, { locale: next });
   }
 
-  const [theme, setTheme] = useState<Theme>(readTheme());
-
-  useEffect(() => setTheme(readTheme()), []);
+  const theme = useSyncExternalStore(onThemeChange, themeSnapshot, () => DEFAULT_THEME);
 
   async function persistTheme(next: Theme) {
-    setTheme(next);
     await patch({ appearanceMode: next.appearance, accentPalette: next.accent });
   }
 

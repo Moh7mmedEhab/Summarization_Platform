@@ -31,7 +31,6 @@ function inputTypeOf(files: UploadedFile[], hasText: boolean): DocumentKind {
 
 /** Count of points across the current summary's sections (rows show "N key points"). */
 export function summaryPointCount(content: unknown): number {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const secs = (content as { sections?: any[] })?.sections;
   if (!Array.isArray(secs)) return 0;
   return secs.reduce((n, s) => n + (Array.isArray(s?.points) ? s.points.length : 0), 0);

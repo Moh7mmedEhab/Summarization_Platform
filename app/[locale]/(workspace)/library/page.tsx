@@ -54,7 +54,6 @@ export default function LibraryPage() {
 
   const load = useCallback(
     async (query: string, kind: Filter, pageNum: number) => {
-      setLoading(true);
       const params = new URLSearchParams();
       if (query.trim()) params.set("q", query.trim());
       if (kind !== "all") params.set("kind", kind);
@@ -71,11 +70,12 @@ export default function LibraryPage() {
   );
 
   useEffect(() => {
-    load(q, filter, page);
+    void load(q, filter, page);
   }, [load, filter, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onSearch = (value: string) => {
     setQ(value);
+    setLoading(true);
     if (debounce.current) clearTimeout(debounce.current);
     debounce.current = setTimeout(() => load(value, filter, 1), 250);
   };
@@ -84,6 +84,7 @@ export default function LibraryPage() {
     const title = editTitle.trim();
     setEditing(null);
     if (!title || title.length === 0) return;
+    setLoading(true);
     await fetch(`/api/documents/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -94,11 +95,13 @@ export default function LibraryPage() {
 
   const destroy = async (id: string) => {
     if (!window.confirm(tCommon("confirmDelete"))) return;
+    setLoading(true);
     await fetch(`/api/documents/${id}`, { method: "DELETE" });
     load(q, filter, page);
   };
 
   const summarize = async (id: string) => {
+    setLoading(true);
     const res = await fetch(`/api/documents/${id}/summarize`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -106,6 +109,7 @@ export default function LibraryPage() {
     });
     const body = await res.json();
     if (body.ok) router.push(`/library/${id}`);
+    setLoading(false);
   };
 
   const counts: Record<Filter, number> = data
@@ -146,11 +150,11 @@ export default function LibraryPage() {
       </div>
 
       <div className="chips" role="group" aria-label={t("filters")}>
-        <button className="chip" aria-pressed={filter === "all"} onClick={() => { setFilter("all"); setPage(1); }}>
+        <button className="chip" aria-pressed={filter === "all"} onClick={() => { setFilter("all"); setPage(1); setLoading(true); }}>
           {t("filterAll")} <b className="num">{counts.all}</b>
         </button>
         {(["pdf", "text", "image_set"] as const).map((k) => (
-          <button key={k} className="chip" aria-pressed={filter === k} onClick={() => { setFilter(k); setPage(1); }}>
+          <button key={k} className="chip" aria-pressed={filter === k} onClick={() => { setFilter(k); setPage(1); setLoading(true); }}>
             {t(`kind.${k}`)} <b className="num">{counts[k]}</b>
           </button>
         ))}
@@ -248,11 +252,11 @@ export default function LibraryPage() {
 
       {data && data.pages > 1 ? (
         <div className="title-row" style={{ justifyContent: "space-between", marginTop: "var(--gap)" }}>
-          <button className="btn" type="button" disabled={data.page <= 1} onClick={() => setPage((p) => p - 1)}>
+          <button className="btn" type="button" disabled={data.page <= 1} onClick={() => { setPage((p) => p - 1); setLoading(true); }}>
             {t("prev")}
           </button>
           <span className="sub num">{t("pagination", { page: data.page, pages: data.pages })}</span>
-          <button className="btn" type="button" disabled={data.page >= data.pages} onClick={() => setPage((p) => p + 1)}>
+          <button className="btn" type="button" disabled={data.page >= data.pages} onClick={() => { setPage((p) => p + 1); setLoading(true); }}>
             {t("next")}
           </button>
         </div>

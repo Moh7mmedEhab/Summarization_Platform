@@ -30,7 +30,6 @@ export async function GET(_request: NextRequest, { params }: Params) {
       job: true,
     });
     const summary = doc.Summaries[0] ?? null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const content = summary ? (summary.content as unknown as SummaryContentT) : null;
     return okJson({
       document: {
@@ -83,7 +82,6 @@ export async function GET(_request: NextRequest, { params }: Params) {
 }
 
 function audioMeta(meta: unknown): unknown {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const m = meta as { durationSec?: number } | null;
   return m?.durationSec ? { durationSec: m.durationSec } : null;
 }

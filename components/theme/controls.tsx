@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import {
   ACCENTS,
-  readTheme,
+  DEFAULT_THEME,
+  onThemeChange,
+  themeSnapshot,
   applyTheme,
   setAccent,
   setAppearance,
@@ -34,18 +36,16 @@ export default function ThemeControls({
   onPersist?: (theme: Theme) => void | Promise<void>;
   labels?: ThemeLabels;
 }) {
-  const [theme, setTheme] = useState<Theme>({ appearance: "light", accent: "rose" });
-
-  useEffect(() => setTheme(readTheme()), []);
+  // The theme lives on <html>'s dataset and is subscribed via the
+  // margins-theme-change event — no mirrored state, no cascading effect.
+  const theme = useSyncExternalStore(onThemeChange, themeSnapshot, () => DEFAULT_THEME);
 
   const pickAppearance = (appearance: Theme["appearance"]) => {
     const next = setAppearance(appearance);
-    setTheme(next);
     void onPersist?.(next);
   };
   const pickAccent = (accent: Accent) => {
     const next = setAccent(accent);
-    setTheme(next);
     void onPersist?.(next);
   };
   const modeLabel = (a: Theme["appearance"]) =>

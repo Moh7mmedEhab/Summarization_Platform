@@ -64,6 +64,22 @@ export const onThemeChange = (cb: () => void) => {
   return () => window.removeEventListener("margins-theme-change", cb);
 };
 
+let snapshotCache: Theme = DEFAULT_THEME;
+
+/**
+ * useSyncExternalStore-ready snapshot of the current theme. React compares
+ * snapshots by identity, so the same object identity must be reused until the
+ * theme value actually changes (readTheme() builds a fresh object each call).
+ */
+export function themeSnapshot(): Theme {
+  if (typeof document === "undefined") return DEFAULT_THEME;
+  const next = readTheme();
+  if (next.appearance !== snapshotCache.appearance || next.accent !== snapshotCache.accent) {
+    snapshotCache = next;
+  }
+  return snapshotCache;
+}
+
 export const setAppearance = (appearance: Appearance) =>
   commit({ ...readTheme(), appearance });
 
