@@ -322,9 +322,11 @@ export async function startSummarization(
   }
   try {
     return await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw<Array<{ id: string }>>`
-        SELECT id FROM "user" WHERE id = ${userId} FOR UPDATE
-      `;
+      // Per-user advisory lock: serializes concurrent summarize calls per user
+      // for the open-jobs limit without depending on the physical table name.
+      // pg_advisory_xact_lock returns void — $queryRaw cannot deserialize that
+      // column type, but $executeRaw tolerates it (it only reports row count).
+      await tx.$executeRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtext(${userId}))`;
       const openJobs = await tx.processingJob.count({
         where: { userId, status: { in: ["queued", "running"] } },
       });
