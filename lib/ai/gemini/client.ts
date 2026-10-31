@@ -20,6 +20,37 @@ export function genai(): GoogleGenAI {
   return instance;
 }
 
+export async function uploadGeminiFile(
+  bytes: Uint8Array,
+  mimeType: string,
+  displayName: string,
+): Promise<string> {
+  const client = genai();
+  const uploaded = await client.files.upload({
+    file: new Blob([bytes as BlobPart], { type: mimeType }),
+    config: { mimeType, displayName },
+  });
+  if (!uploaded.name) {
+    throw new AiError("Gemini Files API upload returned no file name");
+  }
+
+  let info = uploaded;
+  for (let attempt = 0; attempt < 24 && info.state === "PROCESSING"; attempt++) {
+    await sleep(5_000);
+    info = await client.files.get({ name: uploaded.name });
+  }
+  if (info.state === "FAILED") {
+    throw new AiError("Gemini Files API processing failed");
+  }
+  if (info.state === "PROCESSING") {
+    throw new AiError("Gemini Files API processing did not finish within 120 seconds", undefined, true);
+  }
+  if (!info.uri) {
+    throw new AiError("Gemini Files API upload returned no file URI");
+  }
+  return info.uri;
+}
+
 export type InteractionInput = Parameters<GoogleGenAI["interactions"]["create"]>[0];
 
 export type InteractionPart =

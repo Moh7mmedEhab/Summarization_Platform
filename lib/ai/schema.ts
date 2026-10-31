@@ -18,15 +18,15 @@ export const SOURCE_REF_KINDS = [
 
 export const SourceRef = z.object({
   kind: z.enum(SOURCE_REF_KINDS),
-  start: z.coerce.number().optional(), // page/paragraph/image number, or seconds for timestamps
-  end: z.coerce.number().optional(),
-  label: z.string().max(160).optional(), // verbatim context the model may add; never fabricated
+  start: z.coerce.number().nullish(), // page/paragraph/image number, or seconds for timestamps
+  end: z.coerce.number().nullish(),
+  label: z.string().max(160).nullish(), // exact source label or brief verbatim context; never fabricated
 });
 
 export const Importance = z.enum(["high", "normal"]);
 
 export const Point = z.object({
-  lead: z.string().max(200).optional(), // short bold lead-in, e.g. "Three stages."
+  lead: z.string().max(200).nullish(), // short bold lead-in, e.g. "Three stages."
   text: z.string().max(2000),
   refs: z.array(SourceRef).max(6).default([]),
   exam: z.boolean().default(false), // flagged as exam-relevant (source/lecturer statement)
@@ -87,13 +87,13 @@ export const Diagram = z.object({
   nodes: z.array(z.object({
     id: z.string().max(40),
     label: z.string().max(160),
-    order: z.coerce.number().optional(), // for flow: left→right lane
-    level: z.coerce.number().optional(), // for hierarchy: depth
+    order: z.coerce.number().nullish(), // for flow: left→right lane
+    level: z.coerce.number().nullish(), // for hierarchy: depth
   })).min(2).max(12),
   edges: z.array(z.object({
     from: z.string().max(40),
     to: z.string().max(40),
-    label: z.string().max(80).optional(),
+    label: z.string().max(80).nullish(),
   })).max(16),
   refs: z.array(SourceRef).max(6).default([]),
 });
@@ -102,7 +102,7 @@ export const Diagram = z.object({
 export const Chart = z.object({
   kind: z.enum(["bar", "line"]),
   title: z.string().max(200),
-  unit: z.string().max(40).optional(),
+  unit: z.string().max(40).nullish(),
   points: z.array(z.object({
     label: z.string().max(80),
     value: z.coerce.number(),
@@ -118,7 +118,9 @@ export const Coverage = z.object({
 
 export const SummaryContent = z.object({
   title: z.string().max(300),
-  language: z.enum(["en", "ar"]),
+  // Tolerant by design: some model passes echo "english"/"arabic"; the pipeline
+  // overwrites this with the requested language right after parsing anyway.
+  language: z.enum(["en", "ar"]).catch("en"),
   overview: z.string().max(4000),
   sections: z.array(Section).min(1).max(40),
   formulas: z.array(Formula).max(20).default([]),

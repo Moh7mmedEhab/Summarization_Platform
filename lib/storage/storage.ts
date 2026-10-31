@@ -20,11 +20,11 @@ export type Storage = {
   pathOf(key: string): string;
 };
 
-const root = () => path.resolve(process.cwd(), env().STORAGE_DIR);
+const root = () => path.resolve(/*turbopackIgnore: true*/ process.cwd(), env().STORAGE_DIR);
 
 /** Reject path traversal; every key must resolve inside the storage root. */
 function safePath(key: string): string {
-  const abs = path.resolve(root(), key);
+  const abs = path.resolve(/*turbopackIgnore: true*/ root(), key);
   if (!abs.startsWith(root() + path.sep)) {
     throw new Error(`Unsafe storage key: ${key}`);
   }

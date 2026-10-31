@@ -39,7 +39,7 @@ export type PreparedAsset = {
   bytes?: Uint8Array;
   /** transcript segments for audio assets */
   segments?: TranscriptSegment[];
-  /** files-API uri for large pdfs */
+  /** Files API URI for audio and large PDFs. */
   uri?: string;
 };
 
@@ -47,9 +47,9 @@ export type PipelineResult = {
   content: SummaryContentT;
   model: string;
   promptVersion: string;
-  sourceWords: number;
+  sourceWords: number | null;
   summaryWords: number;
-  transcript?: TranscriptSegment[];
+  transcripts: Array<{ assetId: string; segments: TranscriptSegment[] }>;
 };
 
 type Ctx = {
@@ -82,17 +82,15 @@ function chunkText(text: string, max: number): Array<{ chunk: string; startPara:
 }
 
 function groupSegments(segments: TranscriptSegment[], maxChars: number) {
-  const groups: Array<{ chunk: string; startPara: number; paraCount: number; tStart: number; tEnd: number }> = [];
-  let buf: string[] = [];
+  const groups: Array<{ segments: TranscriptSegment[]; tStart: number; tEnd: number }> = [];
+  let buf: TranscriptSegment[] = [];
   let chars = 0;
   let first: TranscriptSegment | null = null;
   let last: TranscriptSegment | null = null;
   const flush = () => {
     if (!buf.length) return;
     groups.push({
-      chunk: buf.join("\n\n"),
-      startPara: 0,
-      paraCount: buf.length,
+      segments: buf,
       tStart: first?.start ?? 0,
       tEnd: last?.end ?? 0,
     });
@@ -103,7 +101,7 @@ function groupSegments(segments: TranscriptSegment[], maxChars: number) {
   };
   for (const seg of segments) {
     if (chars + seg.text.length + 2 > maxChars && buf.length > 0) flush();
-    buf.push(seg.text);
+    buf.push(seg);
     chars += seg.text.length + 2;
     first = first ?? seg;
     last = seg;
@@ -116,16 +114,14 @@ const mmss = (s: number) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 /** Format a transcript group with per-segment global timestamps. */
-function formatTranscript(groups: ReturnType<typeof groupSegments>): Array<{ chunk: string; label: string; startPara: number; paraCount: number }> {
+function formatTranscript(groups: ReturnType<typeof groupSegments>): Array<{ chunk: string; label: string }> {
   return groups.map((g) => {
-    const lines = g.chunk
-      .split("\n\n")
-      .map((text, i) => `(t+${i + 1}) ${text}`);
+    const lines = g.segments.map(
+      (segment) => `[${segment.start.toFixed(2)}s-${segment.end.toFixed(2)}s] ${segment.text}`,
+    );
     return {
       chunk: lines.join("\n\n"),
       label: `Recording ${mmss(g.tStart)}–${mmss(g.tEnd)}`,
-      startPara: g.startPara,
-      paraCount: g.paraCount,
     };
   });
 }
@@ -210,13 +206,15 @@ export async function runPipeline(opts: {
   const transcriptAssets = assets.filter((a) => a.kind === "audio" && a.uri && a.mime);
   const writtenAssets = assets.filter((a) => a.kind !== "audio");
 
-  let allSegments: TranscriptSegment[] = [];
+  const transcripts: PipelineResult["transcripts"] = [];
   for (const asset of transcriptAssets) {
+    if (!asset.uri || !asset.mime) continue;
     await onStage("transcribing lecture", 8);
     try {
-      allSegments = allSegments.concat(
-        await transcribeAudio(asset.uri as string, asset.mime as string),
-      );
+      transcripts.push({
+        assetId: asset.id,
+        segments: await transcribeAudio(asset.uri, asset.mime),
+      });
     } catch (e) {
       throw new AiError(
         `Lecture transcription failed: ${(e as Error).message}. ` +
@@ -225,41 +223,60 @@ export async function runPipeline(opts: {
     }
   }
 
-  // Word counts for text-based sources (pdf/image content lives in binary parts,
-  // counted at the analysis stage instead, so this stays a lower bound for them).
-  const sourceWords = assets.reduce((n, a) => n + countWords(a.text ?? ""), 0);
+  // Binary PDF/image content is analyzed remotely and cannot be counted exactly here.
+  const knownSourceWords =
+    assets.reduce((n, a) => n + countWords(a.text ?? ""), 0) +
+    transcripts.reduce(
+      (n, transcript) => n + transcript.segments.reduce((sum, segment) => sum + countWords(segment.text), 0),
+      0,
+    );
+  const hasUncountedBinarySource = assets.some(
+    (asset) => (asset.kind === "pdf" || asset.kind === "image") && !asset.text,
+  );
+  const sourceWords = hasUncountedBinarySource ? null : knownSourceWords;
 
   // ---- gather analyze parts ----
   type Part = AnalyzeInputArg;
   const parts: Part[] = [];
-  let partCounter = { n: 0 };
+  let nextParagraph = 1;
 
   for (const asset of writtenAssets) {
     if (asset.kind === "text" && asset.text) {
-      for (const c of chunkText(asset.text, MAX_TEXT_CHARS)) {
+      const chunks = chunkText(asset.text, MAX_TEXT_CHARS);
+      for (const c of chunks) {
+        const startPara = nextParagraph + c.startPara - 1;
         parts.push({
           parts: [
             `Source: "${title}"`,
             `Paragraph numbering is GLOBAL across the whole material.`,
-            `Text material (paragraphs ${c.startPara}–${c.startPara + c.paraCount - 1}):`,
+            `Text material (paragraphs ${startPara}–${startPara + c.paraCount - 1}):`,
           ],
           inline: [],
-          label: `Pasted text ¶${c.startPara}–${c.startPara + c.paraCount - 1}`,
+          label: `${asset.filename ?? "Pasted text"} ¶${startPara}–${startPara + c.paraCount - 1}`,
           transcript: c.chunk,
         });
       }
+      nextParagraph += chunks.reduce((count, chunk) => count + chunk.paraCount, 0);
     } else if (asset.kind === "pdf" || asset.kind === "image" || asset.kind === "docx") {
       const inline = await putInline(storage, asset);
       if (asset.kind === "docx") {
         // docx bytes are a zip container; the extracted text already lives in asset.text
-        for (const c of chunkText(asset.text ?? "", MAX_TEXT_CHARS)) {
+        const chunks = chunkText(asset.text ?? "", MAX_TEXT_CHARS);
+        for (const c of chunks) {
+          const startPara = nextParagraph + c.startPara - 1;
           parts.push({
-            parts: [`Source: "${title}" (DOCX).`, "Meta info: DOCX comments were extracted from the file."],
+            parts: [
+              `Source: "${title}" (DOCX).`,
+              `Paragraph numbering is GLOBAL across the whole material.`,
+              `Text material (paragraphs ${startPara}–${startPara + c.paraCount - 1}):`,
+              "Meta info: DOCX comments were extracted from the file.",
+            ],
             inline: [],
-            label: `${asset.filename ?? "document"}`,
+            label: `${asset.filename ?? "document"} ¶${startPara}–${startPara + c.paraCount - 1}`,
             transcript: c.chunk,
           });
         }
+        nextParagraph += chunks.reduce((count, chunk) => count + chunk.paraCount, 0);
       } else {
         parts.push({
           parts: [`Source: "${title}". Reference numbering: PDF pages / images are 1-based across the whole material.`],
@@ -271,20 +288,19 @@ export async function runPipeline(opts: {
   }
 
   // Recorded lecture: transcript chunks (timestamps are seconds, global)
-  if (allSegments.length > 0) {
-    const group = formatTranscript(
-      groupSegments(allSegments, TRANSCRIPT_MAX_CHARS),
-    );
-    for (const g of group) {
+  for (const transcript of transcripts) {
+    const asset = transcriptAssets.find((candidate) => candidate.id === transcript.assetId);
+    const label = (asset?.filename ?? "lecture recording").slice(0, 160);
+    for (const group of formatTranscript(groupSegments(transcript.segments, TRANSCRIPT_MAX_CHARS))) {
       parts.push({
         parts: [
-          `Source: "${title}".`,
-          `Reference numbering: transcript timestamps are SECONDS from the start of the recording; paragraphs "(t+N)" belong to this transcript section only.`,
-          `Marker "(t+N)" before each segment = running segment number within this part. Global time in the section header.`,
+          `Source: "${title}" — ${label}.`,
+          `Reference numbering: each transcript line gives its absolute start and end time in seconds from this recording.`,
+          `Use only the explicit timestamp ranges shown on transcript lines; do not infer timestamps from line order or section labels.`,
         ],
         inline: [],
-        label: `Lecture recording ${g.label}`,
-        transcript: g.chunk,
+        label: `${label} ${group.label}`,
+        transcript: group.chunk,
       });
     }
   }
@@ -322,6 +338,8 @@ export async function runPipeline(opts: {
     { retries: 1 },
   );
   const composed = SummaryContent.parse(parseJsonOrThrow(composedRaw, "compose"));
+  // The requested language is authoritative (schema only catches bad echoes).
+  composed.language = language;
   // keep the student's title as the document title; the notes title stays the model's
   // but a stale/empty one gets repaired to the student's title
   if (!composed.title || composed.title.length < 2) composed.title = title;
@@ -416,6 +434,7 @@ export async function runPipeline(opts: {
   }
 
   // merge audit insight into coverage
+  final.language = language; // keep authoritative even after a repair pass
   final.coverage = {
     analyzed: [
       ...new Set([...(final.coverage.analyzed ?? []), ...(audit.analyzed ?? [])]),
@@ -428,13 +447,7 @@ export async function runPipeline(opts: {
     ].slice(0, 30),
   };
 
-  const summaryWords =
-    final.sections.reduce(
-      (n, s) =>
-        n +
-        s.points.reduce((m, p) => m + countWords(`${p.lead ?? ""} ${p.text}`), 0),
-      0,
-    );
+  const summaryWords = countSummaryWords(final);
 
   await onStage("finalizing", 94);
   return {
@@ -443,8 +456,41 @@ export async function runPipeline(opts: {
     promptVersion: PROMPT_VERSION,
     sourceWords: sourceWords + countWords(sourceDigestPlaceholder),
     summaryWords,
-    transcript: allSegments,
+    transcripts,
   };
+}
+
+function countSummaryWords(content: SummaryContentT): number {
+  const strings = [
+    content.title,
+    content.overview,
+    ...content.sections.flatMap((section) => [
+      section.heading,
+      ...section.points.flatMap((point) => [point.lead ?? "", point.text]),
+      ...section.definitions.flatMap((definition) => [definition.term, definition.meaning]),
+      ...section.examples.flatMap((example) => [example.title ?? "", example.body]),
+      ...section.emphasis.flatMap((item) => [item.topic, item.reason, item.quote ?? "", item.conflict ?? ""]),
+    ]),
+    ...content.formulas.flatMap((formula) => [
+      formula.latex,
+      formula.explanation,
+      ...formula.variables.flatMap((variable) => [variable.symbol, variable.meaning]),
+    ]),
+    ...content.tables.flatMap((table) => [table.title, ...table.headers, ...table.rows.flat()]),
+    ...content.diagrams.flatMap((diagram) => [
+      diagram.title,
+      ...diagram.nodes.map((node) => node.label),
+      ...diagram.edges.map((edge) => edge.label ?? ""),
+    ]),
+    ...content.charts.flatMap((chart) => [
+      chart.title,
+      chart.unit ?? "",
+      ...chart.points.map((point) => point.label),
+    ]),
+    ...content.examNotes.map((note) => note.text),
+    ...content.warnings.map((warning) => warning.text),
+  ];
+  return strings.reduce((total, text) => total + countWords(text), 0);
 }
 
 function envModel(): string {

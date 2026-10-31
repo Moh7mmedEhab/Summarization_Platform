@@ -71,7 +71,13 @@ export function sniff(bytes: Uint8Array, clientType: string): Sniffed {
   }
   // Plain text with an explicit text declaration, or a .txt filename signal is
   // validated at the call site; here we only accept declared text.
+  // Guard against script/code content that would pass isProbablyText (all printable
+  // ASCII) being uploaded as "text/plain": reject common interpreter headers and
+  // embedded code prefixes regardless of the client-declared MIME type.
   if (clientType.startsWith("text/") && isProbablyText(b)) {
+    if (isDangerousTextContent(b)) {
+      throw new UploadError("Executable or script content is not allowed");
+    }
     return { kind: "text", mime: "text/plain" };
   }
   throw new UploadError("Unsupported file type");
@@ -82,6 +88,28 @@ export function isProbablyText(bytes: Uint8Array): boolean {
   let nonText = 0;
   for (const byte of probe) if (byte < 0x09 || (byte > 0x0d && byte < 0x20) || byte === 0x7f) nonText++;
   return nonText / Math.max(1, probe.length) < 0.02;
+}
+
+/**
+ * Detects dangerous text-format content that passes isProbablyText (all
+ * printable ASCII) but should never be stored as study material:
+ * shell scripts, PHP, HTML, XML, and other interpreted languages.
+ * Checked against the first bytes of the file before allowing text uploads.
+ */
+export function isDangerousTextContent(bytes: Uint8Array): boolean {
+  if (bytes.length === 0) return false;
+  const head = String.fromCharCode(...bytes.subarray(0, Math.min(bytes.length, 64)));
+  const trimmed = head.trimStart();
+  // Shell / interpreter shebang lines
+  if (trimmed.startsWith("#!")) return true;
+  // PHP
+  if (trimmed.startsWith("<?php") || trimmed.startsWith("<?PHP")) return true;
+  // HTML / XML / SVG — these could contain JS
+  if (trimmed.startsWith("<html") || trimmed.startsWith("<HTML")) return true;
+  if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<!doctype")) return true;
+  if (trimmed.startsWith("<?xml") || trimmed.startsWith("<?XML")) return true;
+  if (trimmed.startsWith("<svg") || trimmed.startsWith("<SVG")) return true;
+  return false;
 }
 
 export function isImageMime(mime: string): boolean {

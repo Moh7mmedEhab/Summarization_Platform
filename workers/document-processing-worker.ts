@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import { prisma } from "@/lib/db/prisma";
 import { localPrivateStorage } from "@/lib/storage/storage";
 import { runPipeline, type PreparedAsset } from "@/lib/ai/pipeline";
+import { uploadGeminiFile } from "@/lib/ai/gemini/client";
 import type { SourceKind, SummaryStyle } from "@/generated/prisma/enums";
 
 /**
@@ -36,25 +37,16 @@ async function loadAssets(documentId: string): Promise<PreparedAsset[]> {
     try {
       if (asset.storageKey) {
         const bytes = await localPrivateStorage.get(asset.storageKey);
-        // Large PDFs go through the Files API (uri) instead of inline bytes.
-        if (asset.assetType === "pdf" && bytes.byteLength > 12 * 1024 * 1024) {
-          const blob = new Blob([bytes as BlobPart], { type: asset.mimeType ?? "application/pdf" });
-          const client = (await import("@google/genai")).GoogleGenAI;
-          const ai = new client({ apiKey: env().GEMINI_API_KEY });
-          const uploaded = await ai.files.upload({
-            file: blob,
-            config: { mimeType: asset.mimeType ?? "application/pdf", displayName: asset.originalFilename ?? "document" },
-          });
-          // Wait until it's processed (Gemini files UPLOAD → state PROCESSING/ACTIVE)
-          if (uploaded.name) {
-            let info = uploaded;
-            for (let i = 0; i < 24 && info.state === "PROCESSING"; i++) {
-              await new Promise((r) => setTimeout(r, 5_000));
-              info = await ai.files.get({ name: uploaded.name });
-            }
-            if (info.state === "FAILED") throw new Error("Gemini Files API processing failed");
-            prepared.uri = info.uri;
-          }
+        // Audio always uses the Files API; large PDFs avoid oversized inline requests.
+        if (
+          asset.assetType === "audio" ||
+          (asset.assetType === "pdf" && bytes.byteLength > 12 * 1024 * 1024)
+        ) {
+          prepared.uri = await uploadGeminiFile(
+            bytes,
+            asset.mimeType ?? (asset.assetType === "audio" ? "audio/mpeg" : "application/pdf"),
+            asset.originalFilename ?? asset.assetType,
+          );
         } else if (asset.assetType !== "text") {
           prepared.bytes = bytes;
         }
@@ -86,13 +78,6 @@ async function processJob(jobId: string): Promise<void> {
   const doc = await prisma.document.findUniqueOrThrow({ where: { id: job.documentId } });
   const assets = await loadAssets(job.documentId);
 
-  const audioAsset = doc
-    ? await prisma.sourceAsset.findFirst({
-        where: { documentId: doc.id, assetType: "audio" },
-        orderBy: { position: "asc" },
-      })
-    : null;
-
   const result = await runPipeline({
     assets,
     language,
@@ -102,14 +87,15 @@ async function processJob(jobId: string): Promise<void> {
     onStage: report,
   });
 
-  if (result.transcript?.length && audioAsset) {
+  for (const transcript of result.transcripts) {
+    const lastSegment = transcript.segments.at(-1);
     await prisma.sourceAsset.update({
-      where: { id: audioAsset.id },
+      where: { id: transcript.assetId },
       data: {
-        extractedText: result.transcript.map((s) => s.text).join("\n\n"),
+        extractedText: transcript.segments.map((segment) => segment.text).join("\n\n"),
         metadata: {
-          segments: result.transcript.slice(0, 4000),
-          durationSec: result.transcript[result.transcript.length - 1]?.end ?? 0,
+          segments: transcript.segments.slice(0, 4000),
+          durationSec: lastSegment?.end ?? 0,
         },
       },
     });
@@ -149,6 +135,18 @@ async function claimAndProcess(): Promise<void> {
   const job = await claimJob();
   if (!job) return;
   console.log(`[worker] processing job ${job.id} (attempt ${job.attempts}) document ${job.documentId}`);
+  let heartbeatInProgress = false;
+  const heartbeatTimer = setInterval(() => {
+    if (heartbeatInProgress) return;
+    heartbeatInProgress = true;
+    void heartbeat(job.id)
+      .catch((e) => {
+        console.error(`[worker] heartbeat failed for job ${job.id}: ${e instanceof Error ? e.message : e}`);
+      })
+      .finally(() => {
+        heartbeatInProgress = false;
+      });
+  }, 60_000);
   try {
     await processJob(job.id);
     console.log(`[worker] job ${job.id} done`);
@@ -156,6 +154,8 @@ async function claimAndProcess(): Promise<void> {
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`[worker] job ${job.id} failed: ${msg}`);
     await fail(job.id, job.documentId, msg, job.attempts < job.maxAttempts);
+  } finally {
+    clearInterval(heartbeatTimer);
   }
 }
 
