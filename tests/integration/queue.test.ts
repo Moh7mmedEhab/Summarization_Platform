@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db/prisma";
 import { claimJob, heartbeat, progress, finish, fail } from "@/lib/jobs/queue";
+import { deleteDocument } from "@/features/documents/service";
 
 describe("Job Queue Integration (lib/jobs/queue.ts on PostgreSQL)", () => {
   const testRunId = `queue_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -171,5 +172,55 @@ describe("Job Queue Integration (lib/jobs/queue.ts on PostgreSQL)", () => {
 
     const failedDoc = await prisma.document.findUnique({ where: { id: docId2 } });
     expect(failedDoc?.status).toBe("failed");
+  });
+
+  it("finish() is graceful when the document and job were deleted mid-run (no P2025 throw)", async () => {
+    const doc = await prisma.document.create({
+      data: { userId, title: "Doomed doc", status: "processing" },
+    });
+    const job = await prisma.processingJob.create({
+      data: {
+        documentId: doc.id,
+        userId,
+        status: "running",
+        mutex: `mutex_${doc.id}`,
+      },
+    });
+    // The user deletes the document; the job row cascades away.
+    await prisma.document.delete({ where: { id: doc.id } });
+
+    await expect(finish(job.id, doc.id)).resolves.toBeUndefined();
+    await expect(prisma.processingJob.findUnique({ where: { id: job.id } })).resolves.toBeNull();
+    await expect(prisma.document.findUnique({ where: { id: doc.id } })).resolves.toBeNull();
+  });
+
+  it("fail() is graceful when the job row vanished mid-run, and never leaves it running", async () => {
+    const doc = await prisma.document.create({
+      data: { userId, title: "Doomed doc 2", status: "processing" },
+    });
+    const job = await prisma.processingJob.create({
+      data: { documentId: doc.id, userId, status: "running", mutex: `mutex_${doc.id}` },
+    });
+    await prisma.document.delete({ where: { id: doc.id } });
+
+    await expect(fail(job.id, doc.id, "provider exploded", false)).resolves.toBeUndefined();
+  });
+
+  it("deleteDocument cancels queued/running jobs before removing the row", async () => {
+    const doc = await prisma.document.create({
+      data: { userId, title: "Cancel target", status: "processing" },
+    });
+    await prisma.processingJob.create({
+      data: { documentId: doc.id, userId, status: "running", mutex: `mutex_${doc.id}` },
+    });
+    await prisma.processingJob.create({
+      data: { documentId: doc.id, userId, status: "queued" },
+    });
+
+    await deleteDocument(userId, doc.id);
+
+    // Both job rows are gone with the document — nothing is left "running".
+    const remaining = await prisma.processingJob.count({ where: { documentId: doc.id } });
+    expect(remaining).toBe(0);
   });
 });

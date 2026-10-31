@@ -270,6 +270,18 @@ export async function deleteDocument(userId: string, documentId: string): Promis
     include: { SourceAssets: { select: { storageKey: true } } },
   });
   if (!doc) throw new DomainError("Document not found", "not_found");
+  // Cancel any open work first: the cascade delete would remove the rows
+  // anyway, but cancelling makes the intent explicit and covers DBs where
+  // cascade timing differs from the worker's claim loop.
+  await prisma.processingJob.updateMany({
+    where: { documentId, status: { in: ["queued", "running"] } },
+    data: {
+      status: "failed",
+      error: "Document was deleted while the summary was being processed",
+      mutex: null,
+      completedAt: new Date(),
+    },
+  });
   await prisma.document.delete({ where: { id: documentId } });
   const removalResults = await Promise.allSettled(
     (doc.SourceAssets.map((a) => a.storageKey).filter(Boolean) as string[]).map((key) =>

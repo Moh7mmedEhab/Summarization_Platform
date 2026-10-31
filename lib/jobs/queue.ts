@@ -88,29 +88,44 @@ export async function finish(jobId: string, documentId: string): Promise<void> {
     where: { id: jobId },
     data: { status: "succeeded", progress: 100, completedAt: new Date(), mutex: null, error: null },
   });
-  await prisma.document.update({
+  // updateMany instead of update: the document may already be deleted
+  // (user deleted it mid-run; the job row cascaded away). A vanished
+  // document must never surface as a P2025 crash here.
+  await prisma.document.updateMany({
     where: { id: documentId },
     data: { status: "summarized" },
   });
 }
 
+/**
+ * Fail a job. Never throws: if the job or document vanished mid-run, that is
+ * the desired outcome — the important guarantee is that the job is NOT left
+ * in "running".
+ */
 export async function fail(jobId: string, documentId: string, message: string, canRetry: boolean): Promise<void> {
-  const job = await prisma.processingJob.findUnique({ where: { id: jobId } });
-  if (!job) return;
-  const exhausted = !canRetry || job.attempts >= job.maxAttempts;
-  await prisma.processingJob.update({
-    where: { id: jobId },
-    data: {
-      status: exhausted ? "failed" : "queued",
-      error: message.slice(0, 2000),
-      mutex: null, // released either way; re-queue claims again with a fresh claim window
-      completedAt: exhausted ? new Date() : null,
-    },
-  });
-  if (exhausted) {
-    await prisma.document.updateMany({
-      where: { id: documentId, status: { in: ["processing", "draft"] as never } },
-      data: { status: "failed" },
+  try {
+    const job = await prisma.processingJob.findUnique({ where: { id: jobId } });
+    if (!job) return; // row gone (deleted w/ its document): nothing to mark
+    const exhausted = !canRetry || job.attempts >= job.maxAttempts;
+    await prisma.processingJob.update({
+      where: { id: jobId },
+      data: {
+        status: exhausted ? "failed" : "queued",
+        error: message.slice(0, 2000),
+        mutex: null, // released either way; re-queue claims again with a fresh claim window
+        completedAt: exhausted ? new Date() : null,
+      },
     });
+    if (exhausted) {
+      await prisma.document.updateMany({
+        where: { id: documentId, status: { in: ["processing", "draft"] as never } },
+        data: { status: "failed" },
+      });
+    }
+  } catch (e) {
+    // P2025 and friends: the job/document vanished while we marked it. Log
+    // and fall through — the guarantee ("not left running") already holds
+    // because the row itself is gone.
+    console.error(`[queue] fail(${jobId}) could not write its result: ${(e as Error).message}`);
   }
 }
