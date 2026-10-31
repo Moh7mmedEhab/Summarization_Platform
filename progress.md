@@ -101,6 +101,21 @@ Last updated: Fri 30 Oct 2026
 - Palette values are intentionally NOT deviated from a generated tint ladder; each
   was checked for the four pairs (ink on soft/ground, accent on soft/ground).
 
+## QA & Automated Testing Milestone (Sat 31 Oct 2026)
+
+- **Test Infrastructure:** Vitest test runner initialized (`vitest.config.ts`, React Testing Library, JSDOM, `@testing-library/jest-dom`).
+- **PostgreSQL Test Environment:** Dedicated test database `margins_test` deployed on port 5433 with full Prisma migrations.
+- **Unit Testing Suite:** 140 tests passing across upload magic-byte sniffing, storage path-traversal prevention, Zod 4 AI payload contract validation, environment configuration, theme model sanitization, and Arabic/English relative time formatters.
+- **Database & Queue Integration:** 21 tests passing across PostgreSQL cascade deletions, unique constraints, atomic `FOR UPDATE SKIP LOCKED` worker queue claiming, retry count escalation, and document service multi-tenant IDOR protection.
+- **Component & Visual Testing:** 7 tests passing for theme controls (segmented mode toggle, 7 palette chips, `aria-pressed`, live stamp synchronization) and SVG charts/diagrams (pure React SVG rendering with zero HTML injection vulnerabilities).
+- **Security Audit & Hardening:**
+  - `BUG-001` fixed: Added `isDangerousTextContent(bytes)` in `lib/upload/validate.ts` to reject scripts (shebangs `#!/bin/sh`, PHP, HTML, SVG, XML) disguised as `text/plain`.
+  - Multi-tenant IDOR verified: All resource accesses strictly filter by `userId: session.user.id`.
+- **Static Verification & Build:**
+  - `npm run typecheck`: 0 errors.
+  - `npm run build`: All 27 static/dynamic App Router pages and 11 API routes compiled cleanly with Turbopack.
+  - Total automated test count: 168 tests, 100% passing. Comprehensive report saved to `TEST_REPORT.md`.
+
 ## Remaining (next phases)
 - Wire theme persistence to the authenticated user's profile (server-side).
 - Wire the app's real functionality (auth, storage, AI summarization).
