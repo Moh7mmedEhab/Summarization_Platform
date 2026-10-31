@@ -52,6 +52,12 @@ export async function createDocument(
   if (!hasText && files.length === 0) {
     throw new DomainError("Provide pasted text or at least one file", "invalid");
   }
+  // Server-side truth for the pasted-text cap — enforced here so the limit
+  // holds regardless of which caller (upload or JSON create) sends the text.
+  const maxText = env().UPLOAD_MAX_TEXT_CHARS;
+  if (hasText && input.text!.length > maxText) {
+    throw new DomainError(`Pasted text exceeds the ${maxText} character limit`, "too_large");
+  }
 
   // Explicit id so files can be written to storage under the final key BEFORE
   // any database work — no file I/O inside the transaction.

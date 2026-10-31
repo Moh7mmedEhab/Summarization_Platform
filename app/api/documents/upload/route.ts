@@ -1,18 +1,21 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, okJson } from "@/lib/api/respond";
+import { errorResponse, failJson, okJson } from "@/lib/api/respond";
 import { requireSession } from "@/lib/auth/session";
 import { createDocument, type UploadedFile } from "@/features/documents/service";
 import { env } from "@/lib/env";
 import { sniff, isAudioMime, ACCEPTED_UPLOADS } from "@/lib/upload/validate";
 
-const metaSchema = z.object({
-  title: z.string().min(1).max(300).optional(),
-  description: z.string().max(2000).optional(),
-  text: z.string().max(200_000).optional(),
-});
+/** Past-text cap is configured, not a hardcoded constant. */
+const textSchema = (maxChars: number) => z.string().max(maxChars, `Pasted text exceeds the ${maxChars} character limit`).optional();
 
 const AUDIO_EXT = /\.(mp3|wav|m4a|ogg|webm|mp4)$/i;
+
+function totalBytesOf(files: File[], text: string | undefined): number {
+  const fileBytes = files.reduce((n, f) => n + f.size, 0);
+  const textBytes = text === undefined ? 0 : new TextEncoder().encode(text).length;
+  return fileBytes + textBytes;
+}
 
 /**
  * POST /api/documents/upload — multipart form.
@@ -23,18 +26,41 @@ const AUDIO_EXT = /\.(mp3|wav|m4a|ogg|webm|mp4)$/i;
 export async function POST(request: NextRequest) {
   try {
     const session = await requireSession();
+
+    // Reject absurd bodies before buffering them: the declared request size
+    // (Content-Length) is checked before parsing, and real totals again after.
+    const maxTotal = env().MAX_UPLOAD_TOTAL_BYTES;
+    const declared = Number(request.headers.get("content-length") ?? "0");
+    if (Number.isFinite(declared) && declared > maxTotal) {
+      return failJson(413, "too_large", `Upload exceeds the ${(maxTotal / 1_048_576).toFixed(0)} MB total limit`);
+    }
+
     const form = await request.formData();
-    const meta = metaSchema.parse({
+
+    const maxTextChars = env().UPLOAD_MAX_TEXT_CHARS;
+    const rawText = form.get("text");
+    if (typeof rawText === "string" && rawText.length > maxTextChars) {
+      return failJson(413, "too_large", `Pasted text exceeds the ${maxTextChars} character limit`);
+    }
+    const meta = {
       title: form.get("title") || undefined,
       description: form.get("description") || undefined,
-      text: form.get("text") || undefined,
-    });
+      text: rawText || undefined,
+    };
+    const parsedMeta = z
+      .object({
+        title: z.string().min(1).max(300).optional(),
+        description: z.string().max(2000).optional(),
+        text: textSchema(maxTextChars),
+      })
+      .parse(meta);
 
     const maxSource = env().UPLOAD_MAX_SOURCE_BYTES;
     const maxAudio = env().UPLOAD_MAX_AUDIO_BYTES;
     const files = form.getAll("files").filter((f): f is File => f instanceof File);
-    if (meta.text && meta.text.trim().length > 0 && files.length === 0) {
-      // text-only upload still allowed through this route for one-step convenience
+
+    if (totalBytesOf(files, typeof rawText === "string" ? rawText : undefined) > maxTotal) {
+      return failJson(413, "too_large", `Upload exceeds the ${(maxTotal / 1_048_576).toFixed(0)} MB total limit`);
     }
     if (files.length > 12) {
       return okJson({ error: { code: "invalid", message: "At most 12 files per upload" } }, 400);
@@ -70,7 +96,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const hasText = !!meta.text?.trim();
+    const hasText = !!parsedMeta.text?.trim();
     if (parsed.length === 0 && !hasText) {
       return okJson(
         {
@@ -84,14 +110,14 @@ export async function POST(request: NextRequest) {
     }
 
     const title =
-      meta.title?.trim() ||
+      parsedMeta.title?.trim() ||
       parsed[0]?.name.replace(/\.[^.]+$/, "") ||
       "Untitled material";
 
     const { documentId } = await createDocument(session.user.id, {
       title,
-      description: meta.description,
-      text: hasText ? meta.text : undefined,
+      description: parsedMeta.description,
+      text: hasText ? parsedMeta.text : undefined,
       files: parsed,
     });
 

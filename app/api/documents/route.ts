@@ -3,6 +3,7 @@ import { z } from "zod";
 import { errorResponse, okJson } from "@/lib/api/respond";
 import { requireSession } from "@/lib/auth/session";
 import { createDocument, listDocuments } from "@/features/documents/service";
+import { env } from "@/lib/env";
 
 const listQuerySchema = z.object({
   q: z.string().max(200).optional(),
@@ -12,11 +13,12 @@ const listQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
 });
 
-const createSchema = z.object({
-  title: z.string().min(1).max(300),
-  description: z.string().max(2000).optional(),
-  text: z.string().min(1).max(200_000),
-});
+const createTextSchema = (maxChars: number) =>
+  z.object({
+    title: z.string().min(1).max(300),
+    description: z.string().max(2000).optional(),
+    text: z.string().min(1).max(maxChars, `Pasted text exceeds the ${maxChars} character limit`),
+  });
 
 /** GET /api/documents — the authenticated user's library (paginated). */
 export async function GET(request: NextRequest) {
@@ -40,7 +42,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await requireSession();
-    const body = createSchema.parse(await request.json());
+    const body = createTextSchema(env().UPLOAD_MAX_TEXT_CHARS).parse(await request.json());
     const { documentId } = await createDocument(session.user.id, body);
     return okJson({ documentId }, 201);
   } catch (e) {

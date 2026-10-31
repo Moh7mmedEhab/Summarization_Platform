@@ -25,6 +25,7 @@ const schema = z.object({
   EMAIL_FROM: z.string().default("Margins <no-reply@margins.local>"),
 
   STORAGE_DIR: z.string().default("./storage"),
+  MAX_UPLOAD_TOTAL_BYTES: int.default(104_857_600), // 100 MB across an upload's files + text
   UPLOAD_MAX_SOURCE_BYTES: int.default(52_428_800), // 50 MB
   UPLOAD_MAX_AUDIO_BYTES: int.default(52_428_800), // 50 MB
   UPLOAD_MAX_TEXT_CHARS: int.default(200_000),

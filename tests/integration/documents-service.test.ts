@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db/prisma";
+import { env } from "@/lib/env";
 import {
   createDocument,
   getOwnedDocument,
@@ -103,6 +104,16 @@ describe("Document Service & Multi-Tenant IDOR Security", () => {
         title: "Empty Submission",
       })
     ).rejects.toThrow(DomainError);
+  });
+
+  it("enforces UPLOAD_MAX_TEXT_CHARS server-side as too_large", async () => {
+    const over = "x".repeat(env().UPLOAD_MAX_TEXT_CHARS + 1);
+    await expect(
+      createDocument(userA, { title: "Wall of text", text: over })
+    ).rejects.toMatchObject({ code: "too_large" });
+    await expect(
+      prisma.document.findFirst({ where: { title: "Wall of text" } })
+    ).resolves.toBeNull();
   });
 
   it("SECURITY (IDOR): User B CANNOT retrieve User A's document", async () => {
