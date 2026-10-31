@@ -14,10 +14,10 @@ out/
 *.pem
 *.key
 
-# local uploads and private storage
+# local uploads and private storage (runtime data)
 uploads/
-storage/
-private/
+/storage/
+/private/
 
 # design-skill working files and OS noise
 .taste-skill/
