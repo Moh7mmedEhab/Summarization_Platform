@@ -3,7 +3,8 @@
 // schema; application tables are owned by a user via cascade relations.
 
 generator client {
-  provider = "prisma-client" // Prisma 7: TS client generated into ./generated/prisma
+  provider = "prisma-client"
+  // Prisma 7: TS client generated into ./generated/prisma
   output   = "../generated/prisma"
 }
 
@@ -51,19 +52,19 @@ model Session {
 }
 
 model Account {
-  id                   String    @id
-  userId               String    @map("user_id")
-  accountId            String    @map("account_id")
-  providerId           String    @map("provider_id")
-  accessToken          String?   @map("access_token")
-  refreshToken         String?   @map("refresh_token")
-  idToken              String?   @map("id_token")
-  accessTokenExpiresAt DateTime? @map("access_token_expires_at")
+  id                    String    @id
+  userId                String    @map("user_id")
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
   refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
-  scope                String?
-  password             String?
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
   User User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -73,7 +74,7 @@ model Account {
 
 model Verification {
   id         String   @id
-  identifier String   // user email (or other identifier)
+  identifier String // user email (or other identifier)
   value      String   @unique
   expiresAt  DateTime @map("expires_at")
   createdAt  DateTime @default(now()) @map("created_at")
@@ -101,7 +102,7 @@ model UserPreference {
 }
 
 enum DocumentKind {
-  text  // pasted text
+  text // pasted text
   pdf
   docx
   // a lesson assembled from one or more images + optional pasted text
@@ -109,10 +110,10 @@ enum DocumentKind {
 }
 
 enum DocumentStatus {
-  draft       // created, no summary yet
-  processing  // a ProcessingJob is running
-  summarized  // has a current summary
-  failed      // last processing attempt failed
+  draft // created, no summary yet
+  processing // a ProcessingJob is running
+  summarized // has a current summary
+  failed // last processing attempt failed
 }
 
 model Document {
@@ -136,25 +137,25 @@ model Document {
 }
 
 enum SourceKind {
-  text   // pasted text stored inline
+  text // pasted text stored inline
   pdf
   docx
   image
-  audio  // lecture recording
+  audio // lecture recording
 }
 
 model SourceAsset {
-  id              String     @id @default(cuid())
-  documentId      String     @map("document_id")
-  assetType       SourceKind @map("asset_type")
-  position        Int        @default(0) // stable order within the document
-  originalFilename String?   @map("original_filename")
-  mimeType        String?    @map("mime_type")
-  fileSize        Int?       @map("file_size")
-  storageKey      String?    @map("storage_key") // private storage key; no binaries in the DB
-  extractedText   String?    @map("extracted_text") @db.Text
-  metadata        Json?
-  createdAt       DateTime   @default(now()) @map("created_at")
+  id               String     @id @default(cuid())
+  documentId       String     @map("document_id")
+  assetType        SourceKind @map("asset_type")
+  position         Int        @default(0) // stable order within the document
+  originalFilename String?    @map("original_filename")
+  mimeType         String?    @map("mime_type")
+  fileSize         Int?       @map("file_size")
+  storageKey       String?    @map("storage_key") // private storage key; no binaries in the DB
+  extractedText    String?    @map("extracted_text") @db.Text
+  metadata         Json?
+  createdAt        DateTime   @default(now()) @map("created_at")
 
   Document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
@@ -175,7 +176,7 @@ model Summary {
   userId           String       @map("user_id")
   language         String       @default("en") // requested output language: "en" | "ar"
   style            SummaryStyle @default(comprehensive)
-  content          Json         // validated structured notes (lib/ai/schema.ts contract)
+  content          Json // validated structured notes (lib/ai/schema.ts contract)
   model            String
   promptVersion    String       @map("prompt_version")
   coverageMetadata Json?        @map("coverage_metadata") // analyzed/unreadable/possible gaps + pass log
