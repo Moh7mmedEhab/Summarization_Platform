@@ -84,6 +84,8 @@ Schema lives in `prisma/schema.prisma`; SQL migrations in `prisma/migrations/`.
   and ownership check.
 - Keys are validated against path traversal on every access.
 - Auth emails in `dev` mode land in `storage/mail-outbox/*.eml`.
+- Cleanup: `npm run cleanup:storage` removes unreferenced files (24 h safety
+  margin) and aged Gemini Files API copies (48 h); safe to run from cron.
 
 ## Testing
 

@@ -8,6 +8,7 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "worker": "tsx workers/document-processing-worker.ts",
+    "cleanup:storage": "tsx scripts/cleanup-storage.mts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",

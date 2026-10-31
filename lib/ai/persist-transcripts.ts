@@ -39,11 +39,21 @@ export async function persistTranscripts(
   transcripts: Array<{ assetId: string; segments: TranscriptSegment[] }>,
 ): Promise<void> {
   for (const transcript of transcripts) {
+    // Merge over the existing metadata (it may carry geminiFile tracking for
+    // the cleanup task) rather than replacing it wholesale.
+    const current = await prisma.sourceAsset.findUnique({
+      where: { id: transcript.assetId },
+      select: { metadata: true },
+    });
+    const existing =
+      typeof current?.metadata === "object" && current?.metadata !== null
+        ? (current.metadata as Record<string, unknown>)
+        : {};
     await prisma.sourceAsset.update({
       where: { id: transcript.assetId },
       data: {
         extractedText: transcript.segments.map((segment) => segment.text).join("\n\n"),
-        metadata: transcriptMetadata(transcript.segments),
+        metadata: { ...existing, ...transcriptMetadata(transcript.segments) },
       },
     });
   }

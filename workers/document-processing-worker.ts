@@ -79,6 +79,21 @@ async function loadAssets(documentId: string, signal?: AbortSignal): Promise<Pre
             asset.originalFilename ?? asset.assetType,
             { signal },
           ); // `bytes` is a loop-local; after this iteration they are reclaimable
+          // Record the Files API copy so the cleanup task can delete aged-out
+          // copies (Gemini files are auto-purgeable after ~48h).
+          const geminiFile = prepared.uri.replace(/^.*\/files\//, "files/");
+          await prisma.sourceAsset.update({
+            where: { id: asset.id },
+            data: {
+              metadata: {
+                ...(typeof asset.metadata === "object" && asset.metadata !== null
+                  ? (asset.metadata as Record<string, unknown>)
+                  : {}),
+                geminiFile,
+                geminiUploadedAt: new Date().toISOString(),
+              },
+            },
+          });
         } else if (asset.assetType !== "text") {
           prepared.bytes = bytes;
         }
