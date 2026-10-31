@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import { prisma } from "@/lib/db/prisma";
 import { localPrivateStorage } from "@/lib/storage/storage";
 import { runPipeline, type PreparedAsset } from "@/lib/ai/pipeline";
+import { saveSummaryForJob } from "@/lib/ai/save-summary";
 import { uploadGeminiFile } from "@/lib/ai/gemini/client";
 import { estimateAudioDuration } from "@/lib/upload/audio";
 import type { SourceKind, SummaryStyle } from "@/generated/prisma/enums";
@@ -143,30 +144,22 @@ async function processJob(jobId: string, signal: AbortSignal): Promise<void> {
   }
 
   await report("saving", 97);
-  await prisma.$transaction([
-    prisma.summary.updateMany({
-      where: { documentId: job.documentId, current: true },
-      data: { current: false },
-    }),
-    prisma.summary.create({
-      data: {
-        documentId: job.documentId,
-        userId: job.userId,
-        language: result.content.language,
-        style: style as SummaryStyle,
-        content: result.content as unknown as object,
-        model: result.model,
-        promptVersion: result.promptVersion,
-        coverageMetadata: {
-          coverage: result.content.coverage,
-          audit: result.coverageAudit,
-        },
-        sourceWordCount: result.sourceWords,
-        summaryWordCount: result.summaryWords,
-        current: true,
-      },
-    }),
-  ]);
+  await saveSummaryForJob({
+    jobId: job.id,
+    documentId: job.documentId,
+    userId: job.userId,
+    language: result.content.language,
+    style: style as SummaryStyle,
+    content: result.content,
+    model: result.model,
+    promptVersion: result.promptVersion,
+    coverageMetadata: {
+      coverage: result.content.coverage,
+      audit: result.coverageAudit,
+    },
+    sourceWordCount: result.sourceWords,
+    summaryWordCount: result.summaryWords,
+  });
 
   await finish(jobId, job.documentId);
   await report("done", 100);

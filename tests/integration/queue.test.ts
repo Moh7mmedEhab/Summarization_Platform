@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db/prisma";
 import { claimJob, heartbeat, progress, finish, fail } from "@/lib/jobs/queue";
 import { deleteDocument } from "@/features/documents/service";
+import { saveSummaryForJob } from "@/lib/ai/save-summary";
 
 describe("Job Queue Integration (lib/jobs/queue.ts on PostgreSQL)", () => {
   const testRunId = `queue_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -206,8 +207,49 @@ describe("Job Queue Integration (lib/jobs/queue.ts on PostgreSQL)", () => {
     await expect(fail(job.id, doc.id, "provider exploded", false)).resolves.toBeUndefined();
   });
 
-  it("deleteDocument cancels queued/running jobs before removing the row", async () => {
+  it("summary save is idempotent per job: a retry re-promotes, never duplicates", async () => {
     const doc = await prisma.document.create({
+      data: { userId, title: "Idempotent save doc", status: "processing" },
+    });
+    const job = await prisma.processingJob.create({
+      data: { documentId: doc.id, userId, status: "running", mutex: `mutex_${doc.id}` },
+    });
+
+    const payload = {
+      jobId: job.id,
+      documentId: doc.id,
+      userId,
+      language: "en",
+      style: "comprehensive" as const,
+      content: {
+        title: "Notes", language: "en", overview: "O", charts: [], tables: [],
+        sections: [{ heading: "H", points: [{ text: "P" }] }],
+        coverage: { analyzed: [], unreadable: [], possibleGaps: [], oversizeNote: null },
+      } as never,
+      model: "test-model",
+      promptVersion: "test",
+      coverageMetadata: {},
+      sourceWordCount: 10,
+      summaryWordCount: 5,
+    };
+
+    const firstId = await saveSummaryForJob(payload);
+    // simulate finishing() failing and the job retrying: save again
+    const secondId = await saveSummaryForJob({ ...payload, sourceWordCount: 12 });
+
+    expect(secondId).toBe(firstId); // same row re-promoted, no duplicate
+    const rows = await prisma.summary.findMany({ where: { jobId: job.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].current).toBe(true);
+    expect(rows[0].sourceWordCount).toBe(12);
+    // a DIFFERENT job on the same document makes a genuinely new current row
+    const rowsAfter = await prisma.summary.count({ where: { documentId: doc.id, current: true } });
+    expect(rowsAfter).toBe(1);
+
+    await prisma.document.delete({ where: { id: doc.id } }); // cascade cleanup
+  });
+
+  it("deleteDocument cancels queued/running jobs before removing the row", async () => {    const doc = await prisma.document.create({
       data: { userId, title: "Cancel target", status: "processing" },
     });
     await prisma.processingJob.create({

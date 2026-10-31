@@ -185,6 +185,10 @@ model Summary {
   sourceWordCount  Int?         @map("source_word_count")
   summaryWordCount Int?         @map("summary_word_count")
   current          Boolean      @default(true) // previous versions kept, newest wins
+  // The job that produced this summary makes saves idempotent: a retried job
+  // (finish() failed after the save committed) re-promotes its row instead
+  // of creating a duplicate current summary.
+  jobId            String?      @map("job_id")
   createdAt        DateTime     @default(now()) @map("created_at")
   updatedAt        DateTime     @updatedAt @map("updated_at")
 
@@ -193,6 +197,7 @@ model Summary {
 
   @@index([documentId, current])
   @@index([userId, createdAt])
+  @@index([jobId])
   @@map("summary")
 }
 
