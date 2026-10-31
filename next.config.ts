@@ -1,8 +1,11 @@
+import createNextIntlPlugin from "next-intl/plugin";
 import type { NextConfig } from "next";
 
+const withNextIntl = createNextIntlPlugin("./lib/i18n/request.ts");
+
 const nextConfig: NextConfig = {
-  // mammoth (and the pg buffer module) are Node-only; keep them out of the bundler
+  // mammoth (DOCX extraction) is Node-only; keep it out of the bundler
   serverExternalPackages: ["mammoth"],
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

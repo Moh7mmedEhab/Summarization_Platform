@@ -1,0 +1,365 @@
+{
+  "meta": {
+    "title": "Margins — summarize and keep what you read",
+    "description": "Margins is a study library for students: paste text or drop in a PDF and get the summary, and keep texts, documents and images in one place."
+  },
+  "nav": {
+    "studyLibrary": "Study library",
+    "groupLibrary": "Library",
+    "groupAccount": "Account",
+    "summarize": "Summarize",
+    "library": "Library",
+    "appearance": "Appearance",
+    "preferences": "Preferences",
+    "profile": "Profile",
+    "security": "Security",
+    "signOut": "Log out",
+    "signOutError": "Could not sign out. Try again."
+  },
+  "common": {
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirmDelete": "Delete permanently?",
+    "rename": "Rename",
+    "open": "Open",
+    "close": "Close menu",
+    "closeMenu": "Close menu",
+    "openMenu": "Open menu",
+    "words": "{count, plural, one {# word} other {# words}}",
+    "minutes": "{count, plural, one {# minute} other {# minutes}}",
+    "loading": "Loading…",
+    "retry": "Try again",
+    "error": "Something went wrong. Try again.",
+    "notFound": "Not found",
+    "unauthorized": "Sign in to continue.",
+    "yes": "Yes",
+    "no": "No",
+    "copy": "Copy",
+    "copied": "Copied",
+    "download": "Download",
+    "languageName": "Language",
+    "back": "Back"
+  },
+  "auth": {
+    "fragCaptionLogin": "Log in, and today's summary is waiting where you left it.",
+    "fragCaptionRegister": "Create an account, drop your first reading, and keep the points that matter.",
+    "fragCaptionVerify": "Verify, and the library opens.",
+    "fragCaptionForgot": "One link, and you are back to your reading.",
+    "fragCaptionReset": "Save once, and the library is yours again.",
+    "linksNew": "New here? <link>Create account</link>",
+    "linksHave": "Already studying here? <link>Log in</link>",
+    "linksStuck": "Stuck? <link>Log in instead</link>",
+    "linksRemembered": "Remembered it? <link>Log in</link>",
+    "linksDone": "Done already? <link>Log in</link>",
+    "linksWrongAddress": "Wrong address? <link>Go back</link>",
+    "login": {
+      "title": "Log in",
+      "email": "Email",
+      "emailPlaceholder": "you@uni.edu",
+      "password": "Password",
+      "passwordPlaceholder": "Your password",
+      "forgot": "Forgot?",
+      "submit": "Log in",
+      "submitting": "Logging in…"
+    },
+    "register": {
+      "title": "Create account",
+      "name": "Name",
+      "namePlaceholder": "Lina Haddad",
+      "email": "Email",
+      "emailPlaceholder": "you@uni.edu",
+      "password": "Password",
+      "confirm": "Confirm password",
+      "criteria": "At least 8 characters, with one number.",
+      "mismatch": "The two passwords don't match.",
+      "submit": "Create account",
+      "submitting": "Creating your account…"
+    },
+    "verify": {
+      "title": "Verify your email",
+      "subA": "We sent a verification link to",
+      "subB": ". It expires in 24 hours.",
+      "subGeneric": "We sent you a verification link. It expires in 24 hours.",
+      "submit": "Open email client",
+      "resent": "Verification email sent again.",
+      "resend": "Resend verification email",
+      "sendAgainFailed": "Could not resend. Try again."
+    },
+    "verifyDone": {
+      "title": "Email verified",
+      "body": "Your email is confirmed. The whole library is yours now.",
+      "go": "Open Summarize"
+    },
+    "forgot": {
+      "title": "Reset password",
+      "sub": "Enter the email you study with, and we send a link to set a new password.",
+      "email": "Email",
+      "emailPlaceholder": "you@uni.edu",
+      "submit": "Send reset link",
+      "sent": "If that email has an account, the reset link is on its way. Check your inbox.",
+      "note": "No email provider is configured on this server yet — in development the message is written to the server's mail outbox instead."
+    },
+    "reset": {
+      "title": "Set a new password",
+      "new": "New password",
+      "criteria": "At least 8 characters, with one number.",
+      "confirm": "Confirm new password",
+      "mismatch": "The two passwords don't match.",
+      "submit": "Save password",
+      "done": "Password updated. Log in with your new password.",
+      "invalid": "This reset link is invalid or expired. Request a new one."
+    },
+    "errors": {
+      "INVALID_EMAIL_OR_PASSWORD": "Email or password is not correct.",
+      "USER_ALREADY_EXISTS": "An account with this email already exists. Log in instead.",
+      "EMAIL_NOT_VERIFIED": "Verify your email first — we can resend the link.",
+      "USER_NOT_FOUND": "If that email has an account, the reset link is on its way.",
+      "PASSWORD_TOO_SHORT": "That password is too short (at least 8 characters).",
+      "WEAK_PASSWORD": "Password needs at least 8 characters.",
+      "RATE_LIMIT": "Too many attempts. Wait a moment and try again."
+    },
+    "genericError": "That didn't work. Check the details and try again."
+  },
+  "composer": {
+    "title": "Summarize",
+    "sub": "Drop a file or paste text; the summary lands below.",
+    "styleLabel": "Summary style",
+    "style": {
+      "comprehensive": "Comprehensive",
+      "key_points": "Key points",
+      "paragraph": "Paragraph",
+      "exam_prep": "Exam notes"
+    },
+    "languageLabel": "Summary language",
+    "titleField": "Title",
+    "titlePlaceholder": "Cellular respiration (Lecture 4)",
+    "descriptionField": "Description (optional)",
+    "dropzone": "Drop a PDF, DOCX, images or audio here, or paste below.",
+    "dropzoneActive": "Drop to add files",
+    "files": {
+      "add": "Add files",
+      "picked": "{count, plural, one {# file} other {# files}}",
+      "removeLabel": "Remove {name}",
+      "audio": "Lecture recording",
+      "source": "Material",
+      "tooLarge": "{name} is over the {limit} MB limit.",
+      "unsupported": "{name} is not a supported file type.",
+      "overLimit": "At most 12 files per upload.",
+      "audioAttached": "Recording attached — the lecturer's emphasis will be analyzed too."
+    },
+    "textArea": "Text to summarize",
+    "empty": "Add text or files first.",
+    "submit": "Summarize",
+    "submitting": "Summarize…",
+    "count": "{words, plural, =0 {No text yet} other {# words}}",
+    "saveDraft": {
+      "label": "Save without summarizing",
+      "done": "Saved to your library without a summary."
+    },
+    "authNeeded": "Log in to summarize and keep your materials."
+  },
+  "progress": {
+    "title": "Summarizing",
+    "stage": {
+      "queued": "Waiting for a worker…",
+      "preparing": "Preparing the material…",
+      "transcribing lecture": "Transcribing the lecture recording…",
+      "analyzing": "Analyzing the material…",
+      "composing notes": "Composing the notes…",
+      "auditing coverage": "Checking what was covered…",
+      "recovering gaps": "Recovering missed content…",
+      "correcting": "Correcting the notes…",
+      "saving": "Saving to your library…",
+      "done": "Done."
+    },
+    "stagesSuffix": "pass {number} of {total}",
+    "elapsed": "{seconds}s",
+    "failed": "Summarization failed.",
+    "failedReason": "Reason: {reason}",
+    "cancel": "Cancel job",
+    "canceled": "Job canceled.",
+    "retryNote": "The document stays saved; you can summarize it again from the library.",
+    "openResult": "Open the notes"
+  },
+  "summary": {
+    "title": "Summary",
+    "summarizedAt": "Summarized {time}",
+    "youKept": "You kept {percent}% of the source.",
+    "source": "Source",
+    "summaryOf": "Summary",
+    "fewerWords": "{count} fewer words",
+    "wordsShort": "{count} words",
+    "overviewLabel": "Overview",
+    "keypoints": "Key points",
+    "definitions": "Definitions",
+    "examples": "Examples",
+    "formulas": "Formulas",
+    "tables": "Tables",
+    "diagrams": "Diagrams",
+    "charts": "Charts",
+    "examNotes": "Exam notes",
+    "warnings": "Warnings",
+    "coverage": "Coverage",
+    "coverageAnalyzed": "Analyzed",
+    "coverageUnreadable": "Unreadable parts",
+    "coverageGaps": "Possible gaps",
+    "coverageNote": "The AI checked its notes against the source. Listed gaps are parts it could not confidently cover — never invented content.",
+    "emphasis": {
+      "label": "Lecturer emphasized",
+      "reason": "Reason: {reason}",
+      "quote": "“{quote}”",
+      "at": "at {time}",
+      "audioOnly": "Audio only — not in the material",
+      "conflict": "Conflict with the material: {conflict}",
+      "noEvidenceNote": "Emphasis entries appear only with recorded evidence (a quote or timestamp)."
+    },
+    "refs": {
+      "page": "{start, plural, =1 {page #} other {pages #–#}}",
+      "paragraph": "¶{range}",
+      "image": "image #{n}",
+      "timestamp": "{time}",
+      "text": "{label}"
+    },
+    "actions": {
+      "saveToLibrary": "Save to library",
+      "copy": "Copy notes",
+      "regenerate": "Regenerate",
+      "download": "Download source",
+      "print": "Print",
+      "exportPdf": "Export PDF"
+    },
+    "editable": "Notes are editable — your edits save to the library.",
+    "edit": "Edit notes",
+    "editing": "Editing",
+    "pointRef": "{ref}",
+    "vars": "{symbol} = {meaning}"
+  },
+  "library": {
+    "title": "Library",
+    "sub": "{total, plural, one {# item} other {# items}} — {documents} documents, {texts} texts, {images} image sets.",
+    "searchLabel": "Search your library",
+    "searchPlaceholder": "Search",
+    "add": "Add",
+    "addNote": "New material",
+    "filters": "Filter by kind",
+    "filterAll": "All",
+    "kind": {
+      "text": "Texts",
+      "pdf": "Documents",
+      "docx": "Documents",
+      "image_set": "Image sets"
+    },
+    "status": {
+      "draft": "No summary yet",
+      "processing": "Processing…",
+      "summarized": "Summarized",
+      "failed": "Failed"
+    },
+    "assetCount": "{count, plural, one {# file} other {# files}}",
+    "keyPoints": "{count, plural, one {# key point} other {# key points}}",
+    "kept": "{percent}% kept",
+    "noSummary": "—",
+    "sourceWords": "{count} source words",
+    "empty": {
+      "title": "Your library is empty",
+      "body": "Paste text or drop a PDF, and your first summary will land here."
+    },
+    "noMatch": "Nothing matches this search or filter.",
+    "actions": {
+      "summarize": "Summarize",
+      "summarized": "Open",
+      "rename": "Rename",
+      "renameTitle": "Title",
+      "delete": "Delete",
+      "deleted": "Deleted.",
+      "openSummary": "Open summary",
+      "downloadSource": "Download source"
+    },
+    "pagination": "Page {page} of {pages}",
+    "prev": "Previous",
+    "next": "Next",
+    "audioNote": "Includes {count} recording.",
+    "newstrip": {
+      "title": "Summarize something new",
+      "body": "Drop a file or paste text; the summary lands ready to save.",
+      "action": "Summarize"
+    }
+  },
+  "appearance": {
+    "title": "Appearance",
+    "sub": "Change it once; the whole app repaints at once.",
+    "theme": "Theme",
+    "themeDesc": "Set your reading mode and the accent of every margin. Your choice follows your account.",
+    "mode": {
+      "label": "Mode",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "accent": "Accent",
+    "accents": {
+      "rose": "Rose",
+      "lavender": "Lavender",
+      "peach": "Peach",
+      "berry": "Berry",
+      "mint": "Mint",
+      "sky": "Sky",
+      "plum": "Plum"
+    },
+    "livePreview": "Live preview",
+    "previewDesc": "The margin rail every summary gets, painted by your theme as it reads now:",
+    "now": "Now: {stamp}",
+    "savedToAccount": "Saved — it follows your account."
+  },
+  "preferences": {
+    "title": "Preferences",
+    "sub": "Language, appearance, and how the app reads.",
+    "sectionLanguage": {
+      "title": "Language",
+      "desc": "Interface language. The summary's language is chosen per document when you summarize.",
+      "en": "English",
+      "ar": "العربية"
+    },
+    "sectionAppearance": {
+      "title": "Appearance",
+      "desc": "Reading mode and accent palette.",
+      "open": "Open Appearance"
+    },
+    "saved": "Preferences saved."
+  },
+  "profile": {
+    "title": "Profile",
+    "sectionAccount": {
+      "title": "Account",
+      "name": "Name",
+      "email": "Email",
+      "memberSince": "Member since {date}",
+      "verified": "Email verified",
+      "unverified": "Email not verified — check your inbox."
+    },
+    "sectionUsage": {
+      "title": "Your study library",
+      "documents": "{count, plural, one {# document} other {# documents}}",
+      "summaries": "{count, plural, one {# summary} other {# summaries}}"
+    },
+    "sectionLanguage": {
+      "title": "Quick preferences",
+      "language": "Interface language"
+    },
+    "nameSaved": "Name updated.",
+    "security": {
+      "title": "Security",
+      "sub": "Password and session control.",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "criteria": "At least 8 characters, with one number.",
+      "submit": "Change password",
+      "done": "Password changed. Other devices are signed out.",
+      "wrongCurrent": "Current password is not correct.",
+      "sessions": "Sign out of all other devices when you change your password.",
+      "signOut": "Sign out"
+    }
+  }
+}

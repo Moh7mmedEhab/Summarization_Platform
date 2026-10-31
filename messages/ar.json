@@ -1,0 +1,365 @@
+{
+  "meta": {
+    "title": "Margins — لخّص واحفظ ما تقرأ",
+    "description": "مارجنز مكتبة دراسية للطلبة: الصق نصًا أو اسحب ملف PDF وستحصل على الملخص، واحفظ النصوص والمستندات والصور في مكان واحد."
+  },
+  "nav": {
+    "studyLibrary": "مكتبة الدراسة",
+    "groupLibrary": "المكتبة",
+    "groupAccount": "الحساب",
+    "summarize": "تلخيص",
+    "library": "المكتبة",
+    "appearance": "المظهر",
+    "preferences": "التفضيلات",
+    "profile": "الملف الشخصي",
+    "security": "الأمان",
+    "signOut": "تسجيل الخروج",
+    "signOutError": "تعذّر تسجيل الخروج. حاول مرة أخرى."
+  },
+  "common": {
+    "save": "حفظ",
+    "saving": "جارٍ الحفظ…",
+    "saved": "تم الحفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "confirmDelete": "هل تريد الحذف نهائيًا؟",
+    "rename": "إعادة التسمية",
+    "open": "فتح",
+    "close": "إغلاق",
+    "closeMenu": "إغلاق القائمة",
+    "openMenu": "فتح القائمة",
+    "words": "{count, plural, =0 {لا كلمات} one {كلمة واحدة} two {كلمتان} few {# كلمات} many {# كلمة} other {# كلمة}}",
+    "minutes": "{count, plural, one {دقيقة واحدة} two {دقيقتان} few {# دقائق} many {# دقيقة} other {# دقيقة}}",
+    "loading": "جارٍ التحميل…",
+    "retry": "حاول مرة أخرى",
+    "error": "حدث خطأ ما. حاول مجددًا.",
+    "notFound": "غير موجود",
+    "unauthorized": "سجّل الدخول للمتابعة.",
+    "yes": "نعم",
+    "no": "لا",
+    "copy": "نسخ",
+    "copied": "تم النسخ",
+    "download": "تنزيل",
+    "languageName": "اللغة",
+    "back": "رجوع"
+  },
+  "auth": {
+    "fragCaptionLogin": "سجّل الدخول، وملخص اليوم بانتظارك حيث تركته.",
+    "fragCaptionRegister": "أنشئ حسابًا، وأسقط أول قراءة، واحفظ النقاط التي تهمك.",
+    "fragCaptionVerify": "وثّق بريدك، وتُفتح المكتبة.",
+    "fragCaptionForgot": "رابط واحد، وتعود إلى قراءتك.",
+    "fragCaptionReset": "حفظة واحدة، والمكتبة لك من جديد.",
+    "linksNew": "جديد هنا؟ <link>أنشئ حسابًا</link>",
+    "linksHave": "تدرس هنا بالفعل؟ <link>سجّل الدخول</link>",
+    "linksStuck": "تعطّرت الخطوة؟ <link>سجّل الدخول بدلًا من ذلك</link>",
+    "linksRemembered": "تذكّرت كلمة المرور؟ <link>سجّل الدخول</link>",
+    "linksDone": "انتهيت بالفعل؟ <link>سجّل الدخول</link>",
+    "linksWrongAddress": "عنوان خاطئ؟ <link>رجوع</link>",
+    "login": {
+      "title": "تسجيل الدخول",
+      "email": "البريد الإلكتروني",
+      "emailPlaceholder": "you@uni.edu",
+      "password": "كلمة المرور",
+      "passwordPlaceholder": "كلمة المرور",
+      "forgot": "نسيتها؟",
+      "submit": "دخول",
+      "submitting": "جارٍ الدخول…"
+    },
+    "register": {
+      "title": "إنشاء حساب",
+      "name": "الاسم",
+      "namePlaceholder": "لينا حداد",
+      "email": "البريد الإلكتروني",
+      "emailPlaceholder": "you@uni.edu",
+      "password": "كلمة المرور",
+      "confirm": "تأكيد كلمة المرور",
+      "criteria": "‏8 أحرف على الأقل، مع رقم واحد.",
+      "mismatch": "كلمتا المرور غير متطابقتين.",
+      "submit": "إنشاء الحساب",
+      "submitting": "جارٍ إنشاء حسابك…"
+    },
+    "verify": {
+      "title": "وثّق بريدك الإلكتروني",
+      "subA": "أرسلنا رابط تحقق إلى",
+      "subB": ". صالح لمدة 24 ساعة.",
+      "subGeneric": "أرسلنا لك رابط تحقق. صالح لمدة 24 ساعة.",
+      "submit": "فتح بريدك",
+      "resent": "أُعيد إرسال رابط التحقق.",
+      "resend": "إعادة إرسال رابط التحقق",
+      "sendAgainFailed": "تعذّر الإرسال. حاول مرة أخرى."
+    },
+    "verifyDone": {
+      "title": "تم تأكيد البريد",
+      "body": "تأكد بريدك الإلكتروني. المكتبة أصبحت كلها لك الآن.",
+      "go": "افتح التلخيص"
+    },
+    "forgot": {
+      "title": "استعادة كلمة المرور",
+      "sub": "أدخل البريد الذي تدرس به، وسنرسل رابطًا لتعيين كلمة مرور جديدة.",
+      "email": "البريد الإلكتروني",
+      "emailPlaceholder": "you@uni.edu",
+      "submit": "إرسال رابط الاستعادة",
+      "sent": "إن كان لهذا البريد حساب، فرابط الاستعادة في الطريق. تحقق من بريدك.",
+      "note": "لم يُضبط مزوّد بريد على هذا الخادم بعد — في التطوير تُكتب الرسالة في صندوق بريد الخادم بدلًا من ذلك."
+    },
+    "reset": {
+      "title": "تعيين كلمة مرور جديدة",
+      "new": "كلمة المرور الجديدة",
+      "criteria": "‏8 أحرف على الأقل، مع رقم واحد.",
+      "confirm": "تأكيد كلمة المرور الجديدة",
+      "mismatch": "كلمتا المرور غير متطابقتين.",
+      "submit": "حفظ كلمة المرور",
+      "done": "حُدّثت كلمة المرور. سجّل الدخول بكلمة المرور الجديدة.",
+      "invalid": "هذا الرابط غير صالح أو منتهي. اطلب رابطًا جديدًا."
+    },
+    "errors": {
+      "INVALID_EMAIL_OR_PASSWORD": "البريد أو كلمة المرور غير صحيحة.",
+      "USER_ALREADY_EXISTS": "يوجد حساب بهذا البريد بالفعل. سجّل الدخول بدلًا من ذلك.",
+      "EMAIL_NOT_VERIFIED": "وثّق بريدك أولًا — يمكننا إعادة إرسال الرابط.",
+      "USER_NOT_FOUND": "إن كان لهذا البريد حساب، فرابط الاستعادة في الطريق.",
+      "PASSWORD_TOO_SHORT": "كلمة المرور قصيرة جدًا (8 أحرف على الأقل).",
+      "WEAK_PASSWORD": "تحتاج كلمة المرور إلى 8 أحرف على الأقل.",
+      "RATE_LIMIT": "محاولات كثيرة. انتظر لحظة وحاول مجددًا."
+    },
+    "genericError": "لم ينجح ذلك. تحقق من البيانات وحاول مرة أخرى."
+  },
+  "composer": {
+    "title": "تلخيص",
+    "sub": "أسقط ملفًا أو الصق نصًا؛ وسيهب الملخص في الأسفل.",
+    "styleLabel": "نمط الملخص",
+    "style": {
+      "comprehensive": "شامل",
+      "key_points": "نقاط رئيسية",
+      "paragraph": "فقرة",
+      "exam_prep": "ملاحظات الامتحان"
+    },
+    "languageLabel": "لغة الملخص",
+    "titleField": "العنوان",
+    "titlePlaceholder": "التنفس الخلوي (المحاضرة 4)",
+    "descriptionField": "وصف (اختياري)",
+    "dropzone": "أسقط PDF أو DOCX أو صورًا أو تسجيلًا هنا، أو الصق نصًا في الأسفل.",
+    "dropzoneActive": "أسقط لإضافة الملفات",
+    "files": {
+      "add": "إضافة ملفات",
+      "picked": "{count, plural, one {ملف واحد} two {ملفان} few {# ملفات} many {# ملفًا} other {# ملف}}",
+      "removeLabel": "إزالة {name}",
+      "audio": "تسجيل المحاضرة",
+      "source": "المادة",
+      "tooLarge": "{name} يتجاوز حد {limit} ميجابايت.",
+      "unsupported": "{name} بنوع ملف غير مدعوم.",
+      "overLimit": "‏12 ملفًا كحد أقصى لكل رفع.",
+      "audioAttached": "أُلحق التسجيل — ستُحلَّل إبرازات المحاضر أيضًا."
+    },
+    "textArea": "النص المطلوب تلخيصه",
+    "empty": "أضف نصًا أو ملفات أولًا.",
+    "submit": "تلخيص",
+    "submitting": "جارٍ التلخيص…",
+    "count": "{words, plural, =0 {لا نص بعد} other {# كلمة}}",
+    "saveDraft": {
+      "label": "حفظ بدون تلخيص",
+      "done": "حُفظ في مكتبتك بدون ملخص."
+    },
+    "authNeeded": "سجّل الدخول لتلخيص موادك وحفظها."
+  },
+  "progress": {
+    "title": "جارٍ التلخيص",
+    "stage": {
+      "queued": "بانتظار عامل المعالجة…",
+      "preparing": "جارٍ تجهيز المادة…",
+      "transcribing lecture": "جارٍ تفريغ تسجيل المحاضرة…",
+      "analyzing": "جارٍ تحليل المادة…",
+      "composing notes": "جارٍ صياغة الملاحظات…",
+      "auditing coverage": "جارٍ فحص مدى التغطية…",
+      "recovering gaps": "جارٍ استرجاع المحتوى الناقص…",
+      "correcting": "جارٍ تصحيح الملاحظات…",
+      "saving": "جارٍ الحفظ في مكتبتك…",
+      "done": "انتهى."
+    },
+    "stagesSuffix": "خطوة {number} من {total}",
+    "elapsed": "{seconds} ث",
+    "failed": "فشل التلخيص.",
+    "failedReason": "السبب: {reason}",
+    "cancel": "إلغاء المهمة",
+    "canceled": "أُلغيت المهمة.",
+    "retryNote": "بقيت المادة محفوظة؛ يمكنك تلخيصها مجددًا من المكتبة.",
+    "openResult": "افتح الملاحظات"
+  },
+  "summary": {
+    "title": "الملخص",
+    "summarizedAt": "لُخِّص في {time}",
+    "youKept": "احتفظت بـ {percent}% من المصدر.",
+    "source": "المصدر",
+    "summaryOf": "الملخص",
+    "fewerWords": "{count} كلمة أقل",
+    "wordsShort": "{count} كلمة",
+    "overviewLabel": "نظرة عامة",
+    "keypoints": "النقاط الرئيسية",
+    "definitions": "التعريفات",
+    "examples": "الأمثلة",
+    "formulas": "الصيغ",
+    "tables": "الجداول",
+    "diagrams": "المخططات",
+    "charts": "الرسوم البيانية",
+    "examNotes": "ملاحظات الامتحان",
+    "warnings": "تنبيهات",
+    "coverage": "التغطية",
+    "coverageAnalyzed": "ما تحُلَّل",
+    "coverageUnreadable": "أجزاء غير مقروءة",
+    "coverageGaps": "فجوات محتملة",
+    "coverageNote": "فحص الذكاء الاصطناعي ملاحظاته مقابل المصدر. الفجوات المذكورة أجزاء لم يتمكن من تغطيتها بثقة — وليست محتوى مُخترعًا.",
+    "emphasis": {
+      "label": "أبرزها المحاضر",
+      "reason": "السبب: {reason}",
+      "quote": "«{quote}»",
+      "at": "عند {time}",
+      "audioOnly": "من التسجيل فقط — غير موجودة في المادة",
+      "conflict": "تعارض مع المادة: {conflict}",
+      "noEvidenceNote": "لا تظهر إبرازات المحاضر إلا مع دليل مسجَّل (اقتباس أو طابع زمني)."
+    },
+    "refs": {
+      "page": "{start, plural, =1 {صفحة #} other {صفحتا #–#}}",
+      "paragraph": "¶{range}",
+      "image": "صورة #{n}",
+      "timestamp": "{time}",
+      "text": "{label}"
+    },
+    "actions": {
+      "saveToLibrary": "حفظ في المكتبة",
+      "copy": "نسخ الملاحظات",
+      "regenerate": "إعادة التلخيص",
+      "download": "تنزيل المصدر",
+      "print": "طباعة",
+      "exportPdf": "تصدير PDF"
+    },
+    "editable": "الملاحظات قابلة للتحرير — تُحفظ تعديلاتك في المكتبة.",
+    "edit": "تحرير الملاحظات",
+    "editing": "جارٍ التحرير",
+    "pointRef": "{ref}",
+    "vars": "{symbol} = {meaning}"
+  },
+  "library": {
+    "title": "المكتبة",
+    "sub": "{total, plural, one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}} — {documents} مستندات، {texts} نصوص، {images} مجموعات صور.",
+    "searchLabel": "ابحث في مكتبتك",
+    "searchPlaceholder": "بحث",
+    "add": "إضافة",
+    "addNote": "مادة جديدة",
+    "filters": "تصفية حسب النوع",
+    "filterAll": "الكل",
+    "kind": {
+      "text": "نصوص",
+      "pdf": "مستندات",
+      "docx": "مستندات",
+      "image_set": "مجموعات صور"
+    },
+    "status": {
+      "draft": "لا ملخص بعد",
+      "processing": "قيد المعالجة…",
+      "summarized": "مُلخَّص",
+      "failed": "فشل"
+    },
+    "assetCount": "{count, plural, one {ملف واحد} two {ملفان} few {# ملفات} many {# ملفًا} other {# ملف}}",
+    "keyPoints": "{count, plural, one {# نقطة رئيسية} two {نقطتان رئيسيتان} few {# نقاط رئيسية} many {# نقطة رئيسية} other {# نقطة رئيسية}}",
+    "kept": "احتفظت بـ {percent}%",
+    "noSummary": "—",
+    "sourceWords": "{count} كلمة في المصدر",
+    "empty": {
+      "title": "مكتبتك فارغة",
+      "body": "الصق نصًا أو أسقط ملف PDF، وسهبع أول ملخص هنا."
+    },
+    "noMatch": "لا شيء يطابق هذا البحث أو التصفية.",
+    "actions": {
+      "summarize": "تلخيص",
+      "summarized": "فتح",
+      "rename": "إعادة تسمية",
+      "renameTitle": "العنوان",
+      "delete": "حذف",
+      "deleted": "حُذف.",
+      "openSummary": "فتح الملخص",
+      "downloadSource": "تنزيل المصدر"
+    },
+    "pagination": "صفحة {page} من {pages}",
+    "prev": "السابق",
+    "next": "التالي",
+    "audioNote": "يضم {count} تسجيلًا.",
+    "newstrip": {
+      "title": "لخّص شيئًا جديدًا",
+      "body": "أسقط ملفًا أو الصق نصًا؛ وسيهب الملخص جاهزًا للحفظ.",
+      "action": "تلخيص"
+    }
+  },
+  "appearance": {
+    "title": "المظهر",
+    "sub": "غيّره مرة واحدة؛ ويعيد التطبيق كله رسم نفسه دفعة واحدة.",
+    "theme": "السمة",
+    "themeDesc": "اضبط نمط القراءة ولون كل هامش. اختيارك يتبع حسابك.",
+    "mode": {
+      "label": "النمط",
+      "light": "فاتح",
+      "dark": "داكن"
+    },
+    "accent": "اللون",
+    "accents": {
+      "rose": "وردي",
+      "lavender": "لافندر",
+      "peach": "خوخي",
+      "berry": "توتّي",
+      "mint": "نعناعي",
+      "sky": "سماوي",
+      "plum": "برقوقي"
+    },
+    "livePreview": "معاينة حية",
+    "previewDesc": "سكة الهامش التي يحصل عليها كل ملخص، مرسومة بسمتك كما هي الآن:",
+    "now": "الآن: {stamp}",
+    "savedToAccount": "حُفظ — يتبع حسابك."
+  },
+  "preferences": {
+    "title": "التفضيلات",
+    "sub": "اللغة والمظهر وطريقة قراءة التطبيق.",
+    "sectionLanguage": {
+      "title": "اللغة",
+      "desc": "لغة الواجهة. تُختار لغة الملخص لكل مادة عند التلخيص.",
+      "en": "English",
+      "ar": "العربية"
+    },
+    "sectionAppearance": {
+      "title": "المظهر",
+      "desc": "نمط القراءة ولوحة اللون.",
+      "open": "افتح المظهر"
+    },
+    "saved": "حُفظت التفضيلات."
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "sectionAccount": {
+      "title": "الحساب",
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "memberSince": "عضو منذ {date}",
+      "verified": "البريد مُوثَّق",
+      "unverified": "البريد غير مُوثَّق — تحقق من بريدك."
+    },
+    "sectionUsage": {
+      "title": "مكتبتك الدراسية",
+      "documents": "{count, plural, one {مستند واحد} two {مستندان} few {# مستندات} many {# مستندًا} other {# مستند}}",
+      "summaries": "{count, plural, one {ملخص واحد} two {ملخصان} few {# ملخصات} many {# ملخصًا} other {# ملخص}}"
+    },
+    "sectionLanguage": {
+      "title": "تفضيلات سريعة",
+      "language": "لغة الواجهة"
+    },
+    "nameSaved": "حُدّث الاسم.",
+    "security": {
+      "title": "الأمان",
+      "sub": "كلمة المرور والتحكم بالجلسات.",
+      "currentPassword": "كلمة المرور الحالية",
+      "newPassword": "كلمة المرور الجديدة",
+      "criteria": "‏8 أحرف على الأقل، مع رقم واحد.",
+      "submit": "تغيير كلمة المرور",
+      "done": "غُيّرت كلمة المرور. سُجّل خروج الأجهزة الأخرى.",
+      "wrongCurrent": "كلمة المرور الحالية غير صحيحة.",
+      "sessions": "عند تغيير كلمة المرور تُسجَّل الخروج الأجهزة الأخرى تلقائيًا.",
+      "signOut": "تسجيل الخروج"
+    }
+  }
+}
