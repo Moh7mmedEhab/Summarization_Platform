@@ -5,7 +5,19 @@ import { prisma } from "@/lib/db/prisma";
 import { localPrivateStorage } from "@/lib/storage/storage";
 import { runPipeline, type PreparedAsset } from "@/lib/ai/pipeline";
 import { uploadGeminiFile } from "@/lib/ai/gemini/client";
+import { estimateAudioDuration } from "@/lib/upload/audio";
 import type { SourceKind, SummaryStyle } from "@/generated/prisma/enums";
+
+/** Audio over the configured duration limit, thrown with a number-backed message. */
+class AudioLimitError extends Error {
+  constructor(filename: string, seconds: number, maxSec: number) {
+    super(
+      `Recording "${filename}" is about ${Math.round(seconds / 60)} minutes long, over the ` +
+        `${Math.round(maxSec / 60)}-minute limit. Trim or split the recording into parts.`,
+    );
+    this.name = "AudioLimitError";
+  }
+}
 
 /**
  * Background worker for long-running summarization jobs.
@@ -42,6 +54,15 @@ async function loadAssets(documentId: string): Promise<PreparedAsset[]> {
           asset.assetType === "audio" ||
           (asset.assetType === "pdf" && bytes.byteLength > 12 * 1024 * 1024)
         ) {
+          // Duration gate BEFORE any upload to Gemini: refuse long recordings
+          // with a clear message instead of burning a transcription budget.
+          if (asset.assetType === "audio") {
+            const maxSec = env().AUDIO_MAX_DURATION_SEC;
+            const est = estimateAudioDuration(bytes);
+            if (est !== null && est > maxSec) {
+              throw new AudioLimitError(asset.originalFilename ?? asset.id, est, maxSec);
+            }
+          }
           const mimeType = asset.mimeType ?? (asset.assetType === "pdf" ? "application/pdf" : undefined);
           if (!mimeType) throw new Error(`Missing MIME type for stored asset ${asset.id}`);
           prepared.uri = await uploadGeminiFile(

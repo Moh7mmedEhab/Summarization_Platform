@@ -220,4 +220,39 @@ describe("audio pipeline source references", () => {
     ).rejects.toThrow("A lecture recording could not be uploaded for transcription");
     expect(gemini.transcribeAudio).not.toHaveBeenCalled();
   });
+
+  it("rejects recordings that exceed AUDIO_MAX_DURATION_SEC with the exact transcript duration", async () => {
+    // default AUDIO_MAX_DURATION_SEC (10800 s = 180 min) is in force; env() is cached
+    // module-wide, so this test asserts the clear-message behavior, not a custom limit.
+    try {
+      const segments = [
+        { start: 10, end: 15, text: "first phrase" },
+        { start: 18_020, end: 18_025, text: "last phrase" },
+      ]; // 18_025 s ≈ 5 h
+      gemini.transcribeAudio.mockReset().mockResolvedValue(segments);
+
+      await expect(
+        runPipeline({
+          assets: [{
+            id: "audio-1",
+            kind: "audio",
+            uri: "https://generativelanguage.googleapis.com/files/lecture",
+            mime: "audio/mpeg",
+            filename: "marathon.mp3",
+            position: 0,
+          }],
+          language: "en",
+          style: "comprehensive",
+          title: "Marathon lecture",
+          storage,
+          onStage: async () => {},
+        }),
+      ).rejects.toThrow(/over the \d+-minute limit/);
+      // nothing was sent to Gemini after the limit tripped
+      expect(gemini.interactionText).not.toHaveBeenCalled();
+    } finally {
+      // restore the test-suite default (tests/setup.ts env stays unpolluted)
+      delete process.env.AUDIO_MAX_DURATION_SEC;
+    }
+  });
 });

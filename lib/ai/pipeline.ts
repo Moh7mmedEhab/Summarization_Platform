@@ -1,5 +1,6 @@
 import type { Storage } from "@/lib/storage/storage";
 import type { InteractionPart } from "@/lib/ai/gemini/client";
+import { env } from "@/lib/env";
 import {
   interactionText,
   transcribeAudio,
@@ -221,6 +222,16 @@ export async function runPipeline(opts: {
       const segments = await transcribeAudio(asset.uri, asset.mime);
       if (segments.length === 0) {
         throw new Error("No timestamped speech was returned for this recording");
+      }
+      // Exact backstop for durations the header probe can't estimate
+      // (webm/ogg…): the transcript's own timing is the real duration.
+      const maxSec = env().AUDIO_MAX_DURATION_SEC;
+      const spoken = segments.at(-1)?.end ?? 0;
+      if (spoken > maxSec) {
+        throw new Error(
+          `Recording runs ${Math.round(spoken / 60)} minutes, over the ` +
+            `${Math.round(maxSec / 60)}-minute limit. Trim or split the recording into parts.`,
+        );
       }
       transcripts.push({
         assetId: asset.id,

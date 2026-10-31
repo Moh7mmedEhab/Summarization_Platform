@@ -32,6 +32,7 @@ const schema = z.object({
     .default("./storage")
     .transform((v) => path.resolve(v)),
   MAX_UPLOAD_TOTAL_BYTES: int.default(104_857_600), // 100 MB across an upload's files + text
+  AUDIO_MAX_DURATION_SEC: int.default(10_800), // 3 h: recordings over this are rejected
   UPLOAD_MAX_SOURCE_BYTES: int.default(52_428_800), // 50 MB
   UPLOAD_MAX_AUDIO_BYTES: int.default(52_428_800), // 50 MB
   UPLOAD_MAX_TEXT_CHARS: int.default(200_000),

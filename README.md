@@ -52,6 +52,8 @@ npm run worker       # background jobs worker (run in a second terminal)
 | `UPLOAD_MAX_SOURCE_BYTES` | | `52428800` (50 MB) | Per-file cap for documents/images/text |
 | `UPLOAD_MAX_AUDIO_BYTES` | | `52428800` (50 MB) | Per-file cap for audio |
 | `UPLOAD_MAX_TEXT_CHARS` | | `200000` | Cap on pasted text |
+| `MAX_UPLOAD_TOTAL_BYTES` | | `104857600` (100 MB) | Cap on one upload's files + text combined |
+| `AUDIO_MAX_DURATION_SEC` | | `10800` (3 h) | Cap on lecture recording length |
 | `WORKER_POLL_INTERVAL_MS` | | `2000` | Worker claim-loop poll interval |
 
 ### Migrations
