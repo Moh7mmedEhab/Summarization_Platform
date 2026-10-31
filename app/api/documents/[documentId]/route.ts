@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { errorResponse, failJson, okJson } from "@/lib/api/respond";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/session";
 import {
   DomainError,
   getOwnedDocument,
@@ -21,8 +21,7 @@ type Params = { params: Promise<{ documentId: string }> };
 /** GET /api/documents/[documentId] — document + assets + current summary + open job. */
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
-    const session = (await getSession()) ?? null;
-    if (!session) throw new DomainError("Sign in to continue", "forbidden");
+    const session = await requireSession();
     const { documentId } = await params;
     const doc = await getOwnedDocument(session.user.id, documentId, {
       assets: true,
@@ -89,8 +88,7 @@ function audioMeta(meta: unknown): unknown {
 /** PATCH /api/documents/[documentId] — rename / edit description. */
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const session = (await getSession()) ?? null;
-    if (!session) throw new DomainError("Sign in to continue", "forbidden");
+    const session = await requireSession();
     const { documentId } = await params;
     const body = patchSchema.parse(await request.json());
     await updateDocument(session.user.id, documentId, body);
@@ -103,8 +101,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 /** DELETE /api/documents/[documentId] — removes assets, summaries, and private files. */
 export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
-    const session = (await getSession()) ?? null;
-    if (!session) throw new DomainError("Sign in to continue", "forbidden");
+    const session = await requireSession();
     const { documentId } = await params;
     await deleteDocument(session.user.id, documentId);
     return okJson({ deleted: true });

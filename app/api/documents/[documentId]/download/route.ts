@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { Readable } from "node:stream";
 import { errorResponse } from "@/lib/api/respond";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/session";
 import { DomainError, getOwnedDocument } from "@/features/documents/service";
 import { storage } from "@/lib/storage/storage";
 
@@ -15,8 +15,7 @@ type Params = { params: Promise<{ documentId: string }> };
  */
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const session = (await getSession()) ?? null;
-    if (!session) throw new DomainError("Sign in to continue", "forbidden");
+    const session = await requireSession();
     const { documentId } = await params;
     const assetId = request.nextUrl.searchParams.get("asset");
     if (!assetId) throw new DomainError("Which asset? (missing ?asset)", "invalid");

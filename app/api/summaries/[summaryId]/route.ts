@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { errorResponse, failJson, okJson } from "@/lib/api/respond";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { SummaryContent } from "@/lib/ai/schema";
 import { countSummaryWords } from "@/lib/ai/text";
@@ -16,8 +16,7 @@ const patchSchema = z.object({
 /** GET /api/summaries/[summaryId] — owner-only summary view. */
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
-    const session = (await getSession()) ?? null;
-    if (!session) return errorResponse(new Error("UNAUTHORIZED"));
+    const session = await requireSession();
     const { summaryId } = await params;
     const summary = await prisma.summary.findFirst({
       where: { id: summaryId, userId: session.user.id },
@@ -46,8 +45,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 /** PATCH /api/summaries/[summaryId] — save edited notes (validated contract). */
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const session = (await getSession()) ?? null;
-    if (!session) return errorResponse(new Error("UNAUTHORIZED"));
+    const session = await requireSession();
     const { summaryId } = await params;
     const body = patchSchema.parse(await request.json());
 
