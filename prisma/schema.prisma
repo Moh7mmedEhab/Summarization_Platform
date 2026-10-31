@@ -1,0 +1,229 @@
+// Margins — Prisma schema (PostgreSQL on Supabase).
+// Auth tables (user/session/account/verification) follow the Better Auth core
+// schema; application tables are owned by a user via cascade relations.
+
+generator client {
+  provider = "prisma-client" // Prisma 7: TS client generated into ./generated/prisma
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Better Auth core tables
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @map("email_verified")
+  image         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  Session       Session[]
+  Account       Account[]
+  Preference    UserPreference?
+  Document      Document[]
+  Summary       Summary[]
+  ProcessingJob ProcessingJob[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                   String    @id
+  userId               String    @map("user_id")
+  accountId            String    @map("account_id")
+  providerId           String    @map("provider_id")
+  accessToken          String?   @map("access_token")
+  refreshToken         String?   @map("refresh_token")
+  idToken              String?   @map("id_token")
+  accessTokenExpiresAt DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                String?
+  password             String?
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String   // user email (or other identifier)
+  value      String   @unique
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ---------------------------------------------------------------------------
+// Application
+// ---------------------------------------------------------------------------
+
+model UserPreference {
+  userId         String   @id @map("user_id")
+  language       String   @default("en") // "en" | "ar"
+  appearanceMode String   @default("light") // "light" | "dark"
+  accentPalette  String   @default("rose") // rose | lavender | peach | berry | mint | sky | plum
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preference")
+}
+
+enum DocumentKind {
+  text  // pasted text
+  pdf
+  docx
+  // a lesson assembled from one or more images + optional pasted text
+  image_set
+}
+
+enum DocumentStatus {
+  draft       // created, no summary yet
+  processing  // a ProcessingJob is running
+  summarized  // has a current summary
+  failed      // last processing attempt failed
+}
+
+model Document {
+  id          String         @id @default(cuid())
+  userId      String         @map("user_id")
+  title       String
+  description String?
+  inputType   DocumentKind   @default(text) @map("input_type")
+  status      DocumentStatus @default(draft)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  User          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  SourceAssets  SourceAsset[]
+  Summaries     Summary[]
+  ProcessingJob ProcessingJob[]
+
+  @@index([userId, createdAt])
+  @@index([userId, status])
+  @@map("document")
+}
+
+enum SourceKind {
+  text   // pasted text stored inline
+  pdf
+  docx
+  image
+  audio  // lecture recording
+}
+
+model SourceAsset {
+  id              String     @id @default(cuid())
+  documentId      String     @map("document_id")
+  assetType       SourceKind @map("asset_type")
+  position        Int        @default(0) // stable order within the document
+  originalFilename String?   @map("original_filename")
+  mimeType        String?    @map("mime_type")
+  fileSize        Int?       @map("file_size")
+  storageKey      String?    @map("storage_key") // private storage key; no binaries in the DB
+  extractedText   String?    @map("extracted_text") @db.Text
+  metadata        Json?
+  createdAt       DateTime   @default(now()) @map("created_at")
+
+  Document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, position])
+  @@map("source_asset")
+}
+
+enum SummaryStyle {
+  comprehensive // default
+  key_points
+  paragraph
+  exam_prep
+}
+
+model Summary {
+  id               String       @id @default(cuid())
+  documentId       String       @map("document_id")
+  userId           String       @map("user_id")
+  language         String       @default("en") // requested output language: "en" | "ar"
+  style            SummaryStyle @default(comprehensive)
+  content          Json         // validated structured notes (lib/ai/schema.ts contract)
+  model            String
+  promptVersion    String       @map("prompt_version")
+  coverageMetadata Json?        @map("coverage_metadata") // analyzed/unreadable/possible gaps + pass log
+  sourceWordCount  Int?         @map("source_word_count")
+  summaryWordCount Int?         @map("summary_word_count")
+  current          Boolean      @default(true) // previous versions kept, newest wins
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  Document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  User     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, current])
+  @@index([userId, createdAt])
+  @@map("summary")
+}
+
+enum JobStatus {
+  queued
+  running
+  succeeded
+  failed
+  canceled
+}
+
+model ProcessingJob {
+  id          String    @id @default(cuid())
+  documentId  String    @map("document_id")
+  userId      String    @map("user_id")
+  type        String    @default("summarize")
+  status      JobStatus @default(queued)
+  stage       String? // human-readable stage, e.g. "transcribing"
+  progress    Int       @default(0) // 0-100
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(2) @map("max_attempts")
+  payload     Json? // { language, style } for summarize jobs
+  error       String?
+  mutex       String?   @unique @map("mutex") // duplicate-job prevention: one open job per document
+  claimedAt   DateTime? @map("claimed_at")
+  startedAt   DateTime? @map("started_at")
+  heartbeat   DateTime? @map("heartbeat")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  Document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  User     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@map("processing_job")
+}
