@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ACCENT_LABEL, onThemeChange, readTheme } from "@/lib/theme";
 
-/* The label column's per-8.2 "summary of current values": it updates with every pick. */
+/* The label column's "summary of current values": it updates with every pick. */
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 

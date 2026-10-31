@@ -1,4 +1,4 @@
-import { PenIcon } from "@/lib/icons";
+import { PenIcon } from "@/components/icons";
 
 /*
 

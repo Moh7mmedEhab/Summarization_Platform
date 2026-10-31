@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import {
   ACCENTS,
-  ACCENT_LABEL,
   readTheme,
+  applyTheme,
   setAccent,
   setAppearance,
   type Accent,
@@ -12,37 +12,70 @@ import {
 } from "@/lib/theme";
 
 /*
-
-The appearance controls. The mode segmented control and the palette chips are plain
-buttons (keyboard reachable, aria-pressed for the active state). Instantly live: both
-routes write the tokens onto <html> and save to this browser.
-
+The appearance controls. The mode segmented control and the palette chips are
+plain buttons (keyboard reachable, aria-pressed for the active state).
+Instantly live: both routes write the tokens onto <html> and save to this
+browser; when `onPersist` is given (the signed-in preferences screen), the
+account's stored preference is updated too.
 */
 
-export default function ThemeControls() {
+export type ThemeLabels = {
+  mode: string;
+  light: string;
+  dark: string;
+  accent: string;
+  accentNames: Record<Accent, string>;
+};
+
+export default function ThemeControls({
+  onPersist,
+  labels,
+}: {
+  onPersist?: (theme: Theme) => void | Promise<void>;
+  labels?: ThemeLabels;
+}) {
   const [theme, setTheme] = useState<Theme>({ appearance: "light", accent: "rose" });
 
   useEffect(() => setTheme(readTheme()), []);
 
-  const pickAppearance = (appearance: Theme["appearance"]) => setTheme(setAppearance(appearance));
-  const pickAccent = (accent: Accent) => setTheme(setAccent(accent));
+  const pickAppearance = (appearance: Theme["appearance"]) => {
+    const next = setAppearance(appearance);
+    setTheme(next);
+    void onPersist?.(next);
+  };
+  const pickAccent = (accent: Accent) => {
+    const next = setAccent(accent);
+    setTheme(next);
+    void onPersist?.(next);
+  };
+  const modeLabel = (a: Theme["appearance"]) =>
+    labels ? (a === "dark" ? labels.dark : labels.light) : a[0].toUpperCase() + a.slice(1);
+  const accentLabel = (a: Accent) => labels?.accentNames[a] ?? a[0].toUpperCase() + a.slice(1);
 
   return (
     <div className="settingsform">
       <div className="field">
-        <span className="fieldlabel" id="appearance-mode">Mode</span>
+        <span className="fieldlabel" id="appearance-mode">
+          {labels?.mode ?? "Mode"}
+        </span>
         <div className="segmented" role="group" aria-labelledby="appearance-mode">
-          <button type="button" aria-pressed={theme.appearance === "light"} onClick={() => pickAppearance("light")}>
-            Light
-          </button>
-          <button type="button" aria-pressed={theme.appearance === "dark"} onClick={() => pickAppearance("dark")}>
-            Dark
-          </button>
+          {(["light", "dark"] as const).map((a) => (
+            <button
+              key={a}
+              type="button"
+              aria-pressed={theme.appearance === a}
+              onClick={() => pickAppearance(a)}
+            >
+              {modeLabel(a)}
+            </button>
+          ))}
         </div>
       </div>
 
       <div className="field">
-        <span className="fieldlabel" id="appearance-accent">Accent</span>
+        <span className="fieldlabel" id="appearance-accent">
+          {labels?.accent ?? "Accent"}
+        </span>
         <div className="themopts" role="group" aria-labelledby="appearance-accent">
           {ACCENTS.map((accent) => (
             <button
@@ -52,8 +85,10 @@ export default function ThemeControls() {
               aria-pressed={theme.accent === accent}
               onClick={() => pickAccent(accent)}
             >
-              <span className="swatch" data-accent={accent} aria-hidden="true"><i /></span>
-              {ACCENT_LABEL[accent]}
+              <span className="swatch" data-accent={accent} aria-hidden="true">
+                <i />
+              </span>
+              {accentLabel(accent)}
             </button>
           ))}
         </div>
@@ -61,3 +96,6 @@ export default function ThemeControls() {
     </div>
   );
 }
+
+/** Used by the layout route to adopt an account theme on first visit. */
+export { applyTheme };

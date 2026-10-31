@@ -1,4 +1,4 @@
-import SummaryNote, { NOTE_DATA } from "./summary-note";
+import SummaryNote, { NOTE_DATA } from "./note";
 
 /*
 
