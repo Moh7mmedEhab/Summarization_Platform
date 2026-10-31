@@ -130,4 +130,29 @@ describe("audio pipeline source references", () => {
       "second.txt ¶3–3",
     );
   });
+
+  it("does not present a partial text count as the full count for binary sources", async () => {
+    gemini.interactionText.mockReset();
+    gemini.interactionText
+      .mockResolvedValueOnce(JSON.stringify({ notes: "pdf analysis" }))
+      .mockResolvedValueOnce(JSON.stringify(summary))
+      .mockResolvedValueOnce(JSON.stringify({ analyzed: [], missing: [], wrong: [], unreadable: [] }));
+
+    const result = await runPipeline({
+      assets: [{
+        id: "pdf-1",
+        kind: "pdf",
+        mime: "application/pdf",
+        bytes: new Uint8Array([37, 80, 68, 70]),
+        position: 0,
+      }],
+      language: "en",
+      style: "comprehensive",
+      title: "PDF source",
+      storage,
+      onStage: async () => {},
+    });
+
+    expect(result.sourceWords).toBeNull();
+  });
 });

@@ -118,7 +118,7 @@ async function processJob(jobId: string): Promise<void> {
         promptVersion: result.promptVersion,
         coverageMetadata: {
           coverage: result.content.coverage,
-          attemptedAudit: true,
+          audit: result.coverageAudit,
         },
         sourceWordCount: result.sourceWords,
         summaryWordCount: result.summaryWords,

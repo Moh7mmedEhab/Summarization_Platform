@@ -50,6 +50,7 @@ export type PipelineResult = {
   sourceWords: number | null;
   summaryWords: number;
   transcripts: Array<{ assetId: string; segments: TranscriptSegment[] }>;
+  coverageAudit: { completed: boolean; error?: string; recoveryError?: string };
 };
 
 type Ctx = {
@@ -356,6 +357,9 @@ export async function runPipeline(opts: {
     analyzed?: string[];
   } = {};
   let auditRaw: string | null = null;
+  let auditCompleted = false;
+  let auditError: string | undefined;
+  let recoveryError: string | undefined;
   try {
     auditRaw = await interactionText(
       {
@@ -376,8 +380,10 @@ export async function runPipeline(opts: {
       { retries: 1 },
     );
     audit = JSON.parse(auditRaw);
-  } catch {
-    // The audit is best-effort; notes stay valid without it.
+    auditCompleted = true;
+  } catch (e) {
+    auditError = e instanceof Error ? e.message : String(e);
+    console.error(`[ai] coverage audit failed: ${auditError}`);
   }
 
   // ---- gap recovery (only when the audit found material) ----
@@ -408,8 +414,10 @@ export async function runPipeline(opts: {
       );
       const repaired = SummaryContent.safeParse(parseJsonOrThrow(recoveryRaw, "recovery"));
       if (repaired.success) final = repaired.data;
-    } catch {
-      // Keep the composed draft; gaps stay listed in coverage below.
+      else recoveryError = "Recovery response did not satisfy the summary schema";
+    } catch (e) {
+      recoveryError = e instanceof Error ? e.message : String(e);
+      console.error(`[ai] gap recovery failed: ${recoveryError}`);
     }
   } else if (wrongFound > 0 || (audit.unreadable?.length ?? 0) > 0) {
     // No missing content, but wrong statements flagged → still run recovery once
@@ -428,8 +436,10 @@ export async function runPipeline(opts: {
       );
       const repaired = SummaryContent.safeParse(parseJsonOrThrow(recoveryRaw, "recovery"));
       if (repaired.success) final = repaired.data;
-    } catch {
-      /* keep composed */
+      else recoveryError = "Correction response did not satisfy the summary schema";
+    } catch (e) {
+      recoveryError = e instanceof Error ? e.message : String(e);
+      console.error(`[ai] summary correction failed: ${recoveryError}`);
     }
   }
 
@@ -454,9 +464,14 @@ export async function runPipeline(opts: {
     content: final,
     model: envModel(),
     promptVersion: PROMPT_VERSION,
-    sourceWords: sourceWords + countWords(sourceDigestPlaceholder),
+    sourceWords,
     summaryWords,
     transcripts,
+    coverageAudit: {
+      completed: auditCompleted,
+      ...(auditError ? { error: auditError } : {}),
+      ...(recoveryError ? { recoveryError } : {}),
+    },
   };
 }
 
@@ -496,5 +511,3 @@ function countSummaryWords(content: SummaryContentT): number {
 function envModel(): string {
   return process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
 }
-
-const sourceDigestPlaceholder = "";
