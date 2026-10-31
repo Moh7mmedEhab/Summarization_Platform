@@ -1,6 +1,9 @@
 # dependencies
 node_modules/
 
+# prisma client output (generated)
+generated/
+
 # next.js build outputs
 .next/
 out/
@@ -21,3 +24,6 @@ private/
 .DS_Store
 Thumbs.db
 *.log
+
+# keep the example env tracked
+!.env.example

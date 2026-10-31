@@ -1,5 +1,49 @@
 # Margins — progress
 
+Last updated: Sat 31 Oct 2026
+
+## Implementation plan (full platform build)
+
+Transforming the Margins *design* into a complete study platform. Reference design
+is untouched: same shell, composer, margin-rail result, auth cards, settings rows,
+7-palette theme system. All static/demo behavior is replaced by real data.
+
+Stack (verified current, all stable):
+- Next.js 16.4.3 (App Router, `proxy.ts`), React 19.3.x, TypeScript 7.0.2
+- PostgreSQL 18 (local cluster, running) + Prisma 7.10.1 stable + `@prisma/adapter-pg`
+  (Prisma 8 is RC → not used)
+- Better Auth 1.7.14 (Prisma adapter; email+password, sessions, verification, reset)
+- `@google/genai` 2.x — current **Interactions API** (`ai.interactions.create`,
+  `ai.files.upload`), Gemini `gemini-3.8-flash` (configurable), transcription via
+  `gemini-3.5-transcribe` with word-level timestamps for lecturer-emphasis analysis
+- next-intl 4.x (`en`/`ar`, RTL), Zod 4.x, `mammoth` for DOCX text, local private
+  file storage (dev) behind a storage abstraction
+
+Build order (each its own commit):
+1. chore: upgrade deps, TS strict, `.env.example`, env validation
+2. feat(db): Prisma schema (Better Auth tables + User + UserPreference + Document +
+   SourceAsset + Summary + ProcessingJob), migrations, DB_STRUCTURE.md
+3. feat(auth): Better Auth wiring, mailer abstraction (dev console/outbox files,
+   configurable provider), auth pages → real flows, profile password change
+4. feat(i18n): locale routing `[locale]`, proxy.ts, messages/ full en+ar, RTL pass
+5. feat(storage+documents): upload endpoints, magic-byte validation, private files
+6. feat(ai): summarization pipeline (chunking, section analysis, merge, coverage
+   check + gap recovery, Zod contract, source references), lecturer emphasis from
+   audio evidence, job queue (`ProcessingJob`, SKIP LOCKED claim) + worker process
+7. feat(workspace): real summarize flow (job polling), summary viewer (points,
+   emphasis pills, formulas, tables, charts + flowcharts as safe SVG), library UI
+   over real records, preferences persisting theme to DB
+8. docs: api_routes.md, PROJECT_MAP.md, AGENTS.md, progress verification
+
+Architecture decisions:
+- Files live on disk (`storage/<userId>/…`, private), metadata in Postgres.
+- Job worker: `npm run worker` (tsx workers/document-processing-worker.ts).
+- Diagrams = validated, restricted node/edge JSON rendered to SVG. No AI HTML.
+- No provider of email configured → dev mailer logs the message + writes .eml to
+  `storage/outbox/`; UI never claims a sent email it cannot guarantee.
+
+## Prior work (theme system phase)
+
 Last updated: Fri 30 Oct 2026
 
 ## Completed
