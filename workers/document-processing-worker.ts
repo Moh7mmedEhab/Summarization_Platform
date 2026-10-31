@@ -42,9 +42,11 @@ async function loadAssets(documentId: string): Promise<PreparedAsset[]> {
           asset.assetType === "audio" ||
           (asset.assetType === "pdf" && bytes.byteLength > 12 * 1024 * 1024)
         ) {
+          const mimeType = asset.mimeType ?? (asset.assetType === "pdf" ? "application/pdf" : undefined);
+          if (!mimeType) throw new Error(`Missing MIME type for stored asset ${asset.id}`);
           prepared.uri = await uploadGeminiFile(
             bytes,
-            asset.mimeType ?? (asset.assetType === "audio" ? "audio/mpeg" : "application/pdf"),
+            mimeType,
             asset.originalFilename ?? asset.assetType,
           );
         } else if (asset.assetType !== "text") {

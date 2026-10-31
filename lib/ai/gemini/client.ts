@@ -179,14 +179,15 @@ export async function transcribeAudio(
         if (a.type !== "word_info" || !a.text) continue;
         const start = parseOffset(a.start_offset);
         const end = parseOffset(a.end_offset);
-        const started = Number.isFinite(start);
+        if (!Number.isFinite(start) || (Number.isFinite(end) && end < start)) continue;
+        const segmentEnd = Number.isFinite(end) ? end : start;
         const gap = !current || current.end < start - 4;
-        if (started && (gap || segments.length === 0)) {
-          current = { start, end: Number.isFinite(end) ? end : start, text: ` ${a.text}` };
+        if (gap || segments.length === 0) {
+          current = { start, end: segmentEnd, text: ` ${a.text}` };
           segments.push(current);
         } else if (current) {
           current.text += ` ${a.text}`;
-          if (Number.isFinite(end)) current.end = end;
+          current.end = segmentEnd;
         }
       }
     }

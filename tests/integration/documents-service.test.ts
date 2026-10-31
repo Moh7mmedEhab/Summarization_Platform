@@ -6,6 +6,7 @@ import {
   updateDocument,
   deleteDocument,
   listDocuments,
+  startSummarization,
   DomainError,
   summaryPointCount,
 } from "@/features/documents/service";
@@ -128,6 +129,33 @@ describe("Document Service & Multi-Tenant IDOR Security", () => {
     const listB = await listDocuments(userB, { page: 1 });
     expect(listB.items.length).toBe(1);
     expect(listB.items[0].title).toBe("User B Private Chemistry");
+  });
+
+  it("enforces the per-user open-job limit under concurrent requests", async () => {
+    const documents = await Promise.all(
+      Array.from({ length: 4 }, (_, index) =>
+        createDocument(userA, { title: `Queued document ${index}`, text: "Lecture text." }),
+      ),
+    );
+
+    const outcomes = await Promise.allSettled(
+      documents.map(({ documentId }) =>
+        startSummarization(userA, documentId, { language: "en", style: "comprehensive" }),
+      ),
+    );
+
+    expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(3);
+    const rejected = outcomes.filter((outcome) => outcome.status === "rejected");
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]).toMatchObject({
+      status: "rejected",
+      reason: { code: "conflict" },
+    });
+    expect(
+      await prisma.processingJob.count({
+        where: { userId: userA, status: { in: ["queued", "running"] } },
+      }),
+    ).toBe(3);
   });
 
   it("calculates summaryPointCount correctly", () => {

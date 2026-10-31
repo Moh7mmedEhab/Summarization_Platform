@@ -36,16 +36,13 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     const session = (await getSession()) ?? null;
     if (!session) return errorResponse(new Error("UNAUTHORIZED"));
     const { jobId } = await params;
-    const job = await prisma.processingJob.findFirst({
+    const canceled = await prisma.processingJob.updateMany({
       where: { id: jobId, userId: session.user.id, status: "queued" },
-    });
-    if (!job) return failJson(404, "not_found", "No queued job to cancel");
-    await prisma.processingJob.update({
-      where: { id: job.id },
       data: { status: "canceled", mutex: null, completedAt: new Date() },
     });
+    if (canceled.count === 0) return failJson(404, "not_found", "No queued job to cancel");
     await prisma.document.updateMany({
-      where: { id: job.documentId, status: "processing" },
+      where: { ProcessingJob: { some: { id: jobId, userId: session.user.id } }, status: "processing" },
       data: { status: "draft" },
     });
     return okJson({ canceled: true });

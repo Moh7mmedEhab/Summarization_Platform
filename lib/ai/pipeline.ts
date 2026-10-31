@@ -16,7 +16,7 @@ import {
   styleDirective,
 } from "@/lib/ai/prompts";
 import { SummaryContent, type SummaryContentT } from "@/lib/ai/schema";
-import { countWords } from "@/lib/ai/text";
+import { countSummaryWords, countWords } from "@/lib/ai/text";
 import type { SourceKind } from "@/generated/prisma/enums";
 
 /**
@@ -204,17 +204,27 @@ export async function runPipeline(opts: {
   await onStage("preparing", 3);
 
   // ---- audio → transcript (global timestamps kept) ----
-  const transcriptAssets = assets.filter((a) => a.kind === "audio" && a.uri && a.mime);
+  const audioAssets = assets.filter((asset) => asset.kind === "audio");
+  if (audioAssets.some((asset) => !asset.uri || !asset.mime)) {
+    throw new AiError("A lecture recording could not be uploaded for transcription");
+  }
+  const transcriptAssets = audioAssets.filter(
+    (asset): asset is PreparedAsset & { kind: "audio"; uri: string; mime: string } =>
+      Boolean(asset.uri && asset.mime),
+  );
   const writtenAssets = assets.filter((a) => a.kind !== "audio");
 
   const transcripts: PipelineResult["transcripts"] = [];
   for (const asset of transcriptAssets) {
-    if (!asset.uri || !asset.mime) continue;
     await onStage("transcribing lecture", 8);
     try {
+      const segments = await transcribeAudio(asset.uri, asset.mime);
+      if (segments.length === 0) {
+        throw new Error("No timestamped speech was returned for this recording");
+      }
       transcripts.push({
         assetId: asset.id,
-        segments: await transcribeAudio(asset.uri, asset.mime),
+        segments,
       });
     } catch (e) {
       throw new AiError(
@@ -240,6 +250,7 @@ export async function runPipeline(opts: {
   type Part = AnalyzeInputArg;
   const parts: Part[] = [];
   let nextParagraph = 1;
+  let nextImage = 1;
 
   for (const asset of writtenAssets) {
     if (asset.kind === "text" && asset.text) {
@@ -263,6 +274,9 @@ export async function runPipeline(opts: {
       if (asset.kind === "docx") {
         // docx bytes are a zip container; the extracted text already lives in asset.text
         const chunks = chunkText(asset.text ?? "", MAX_TEXT_CHARS);
+        if (chunks.length === 0) {
+          throw new AiError(`No readable text was extracted from ${asset.filename ?? "a DOCX source"}`);
+        }
         for (const c of chunks) {
           const startPara = nextParagraph + c.startPara - 1;
           parts.push({
@@ -279,8 +293,14 @@ export async function runPipeline(opts: {
         }
         nextParagraph += chunks.reduce((count, chunk) => count + chunk.paraCount, 0);
       } else {
+        if (inline.length === 0) {
+          throw new AiError(`Source content could not be loaded for ${asset.filename ?? asset.kind}`);
+        }
+        const reference = asset.kind === "image"
+          ? `Reference numbering: this is image ${nextImage++} (1-based in source order).`
+          : `Reference numbering: PDF pages are 1-based within this file; include "${asset.filename ?? "source PDF"}" in page-reference labels.`;
         parts.push({
-          parts: [`Source: "${title}". Reference numbering: PDF pages / images are 1-based across the whole material.`],
+          parts: [`Source: "${title}".`, reference],
           inline,
           label: asset.filename ?? asset.kind,
         });
@@ -348,8 +368,31 @@ export async function runPipeline(opts: {
   // ---- coverage audit ----
   await ctx.onStage("auditing coverage", 76);
   const sourceDigest = parts
-    .map((p) => (p.transcript ?? "").slice(0, 2_000))
+    .map((part) => {
+      if (!part.transcript) return "";
+      const text = part.transcript;
+      if (text.length <= 2_000) return `### ${part.label}\n${text}`;
+      const marker = "\n[...]\n";
+      const excerptSize = Math.floor((2_000 - marker.length * 2) / 3);
+      const middleStart = Math.floor((text.length - excerptSize) / 2);
+      return [
+        `### ${part.label}`,
+        text.slice(0, excerptSize),
+        marker,
+        text.slice(middleStart, middleStart + excerptSize),
+        marker,
+        text.slice(-excerptSize),
+      ].join("\n");
+    })
+    .filter(Boolean)
     .join("\n----\n");
+  const auditLimitations: string[] = [];
+  if (parts.some((part) => part.inline.length > 0)) {
+    auditLimitations.push("Binary PDF/image parts are not included in the coverage audit.");
+  }
+  if (parts.some((part) => (part.transcript?.length ?? 0) > 2_000)) {
+    auditLimitations.push("Long text parts are represented by excerpts in the coverage audit.");
+  }
   let audit: {
     missing?: Array<{ topic: string; detail?: string; where?: string }>;
     wrong?: Array<{ issue: string }>;
@@ -360,30 +403,38 @@ export async function runPipeline(opts: {
   let auditCompleted = false;
   let auditError: string | undefined;
   let recoveryError: string | undefined;
-  try {
-    auditRaw = await interactionText(
-      {
-        system: COVERAGE_SYSTEM,
-        input: [
-          {
-            type: "text",
-            text: [
-              `DRAFT NOTES JSON:\n${JSON.stringify(composed).slice(0, 20_000)}`,
-              `SOURCE MATERIAL DIGEST (verbatim excerpts, first part of each analyzed region):\n${sourceDigest}`,
-              COVERAGE_PROMPT,
-            ].join("\n\n"),
-          },
-        ],
-        json: true,
-        maxOutputTokens: 8_000,
-      },
-      { retries: 1 },
-    );
-    audit = JSON.parse(auditRaw);
-    auditCompleted = true;
-  } catch (e) {
-    auditError = e instanceof Error ? e.message : String(e);
-    console.error(`[ai] coverage audit failed: ${auditError}`);
+  if (!sourceDigest) {
+    auditError = "Coverage audit skipped because no text or transcript excerpts were available.";
+  } else {
+    try {
+      auditRaw = await interactionText(
+        {
+          system: COVERAGE_SYSTEM,
+          input: [
+            {
+              type: "text",
+              text: [
+                `DRAFT NOTES JSON:\n${JSON.stringify(composed).slice(0, 20_000)}`,
+                `SOURCE MATERIAL DIGEST (verbatim excerpts):\n${sourceDigest}`,
+                COVERAGE_PROMPT,
+              ].join("\n\n"),
+            },
+          ],
+          json: true,
+          maxOutputTokens: 8_000,
+        },
+        { retries: 1 },
+      );
+      audit = JSON.parse(auditRaw);
+      auditCompleted = auditLimitations.length === 0;
+      if (auditLimitations.length > 0) auditError = auditLimitations.join(" ");
+    } catch (e) {
+      auditError = e instanceof Error ? e.message : String(e);
+      console.error(`[ai] coverage audit failed: ${auditError}`);
+    }
+  }
+  if (auditError && !auditCompleted) {
+    console.warn(`[ai] coverage audit incomplete: ${auditError}`);
   }
 
   // ---- gap recovery (only when the audit found material) ----
@@ -473,39 +524,6 @@ export async function runPipeline(opts: {
       ...(recoveryError ? { recoveryError } : {}),
     },
   };
-}
-
-function countSummaryWords(content: SummaryContentT): number {
-  const strings = [
-    content.title,
-    content.overview,
-    ...content.sections.flatMap((section) => [
-      section.heading,
-      ...section.points.flatMap((point) => [point.lead ?? "", point.text]),
-      ...section.definitions.flatMap((definition) => [definition.term, definition.meaning]),
-      ...section.examples.flatMap((example) => [example.title ?? "", example.body]),
-      ...section.emphasis.flatMap((item) => [item.topic, item.reason, item.quote ?? "", item.conflict ?? ""]),
-    ]),
-    ...content.formulas.flatMap((formula) => [
-      formula.latex,
-      formula.explanation,
-      ...formula.variables.flatMap((variable) => [variable.symbol, variable.meaning]),
-    ]),
-    ...content.tables.flatMap((table) => [table.title, ...table.headers, ...table.rows.flat()]),
-    ...content.diagrams.flatMap((diagram) => [
-      diagram.title,
-      ...diagram.nodes.map((node) => node.label),
-      ...diagram.edges.map((edge) => edge.label ?? ""),
-    ]),
-    ...content.charts.flatMap((chart) => [
-      chart.title,
-      chart.unit ?? "",
-      ...chart.points.map((point) => point.label),
-    ]),
-    ...content.examNotes.map((note) => note.text),
-    ...content.warnings.map((warning) => warning.text),
-  ];
-  return strings.reduce((total, text) => total + countWords(text), 0);
 }
 
 function envModel(): string {

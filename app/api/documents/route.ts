@@ -1,8 +1,16 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, okJson, num } from "@/lib/api/respond";
+import { errorResponse, okJson } from "@/lib/api/respond";
 import { requireSession } from "@/lib/auth/session";
 import { createDocument, listDocuments } from "@/features/documents/service";
+
+const listQuerySchema = z.object({
+  q: z.string().max(200).optional(),
+  kind: z.enum(["all", "text", "pdf", "docx", "image_set"]).default("all"),
+  status: z.enum(["all", "summarized", "draft", "processing", "failed"]).default("all"),
+  sort: z.enum(["recent", "oldest", "title"]).default("recent"),
+  page: z.coerce.number().int().positive().default(1),
+});
 
 const createSchema = z.object({
   title: z.string().min(1).max(300),
@@ -15,16 +23,14 @@ export async function GET(request: NextRequest) {
   try {
     const session = await requireSession();
     const p = request.nextUrl.searchParams;
-    const result = await listDocuments(session.user.id, {
+    const query = listQuerySchema.parse({
       q: p.get("q") ?? undefined,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      kind: (p.get("kind") as any) ?? "all",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      status: (p.get("status") as any) ?? "all",
-      sort: (p.get("sort") as "recent" | "oldest" | "title") ?? "recent",
-      page: num(p.get("page")),
+      kind: p.get("kind") ?? "all",
+      status: p.get("status") ?? "all",
+      sort: p.get("sort") ?? "recent",
+      page: p.get("page") ?? "1",
     });
-    return okJson(result);
+    return okJson(await listDocuments(session.user.id, query));
   } catch (e) {
     return errorResponse(e);
   }

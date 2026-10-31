@@ -149,8 +149,10 @@ export function refLabel(
   const r = refs[0];
   if (!r) return "";
   switch (r.kind) {
-    case "page":
-      return r.end ? `pages ${r.start}–${r.end}` : `page ${r.start}`;
+    case "page": {
+      const page = r.end ? `pages ${r.start}–${r.end}` : `page ${r.start}`;
+      return r.label ? `${r.label} · ${page}` : page;
+    }
     case "paragraph":
       return `¶${r.start ?? "?"}`;
     case "image":

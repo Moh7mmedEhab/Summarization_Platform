@@ -45,14 +45,16 @@ export async function POST(request: NextRequest) {
     let sawAudio = false;
 
     for (const f of files) {
-      const bytes = new Uint8Array(await f.arrayBuffer());
-      const isAudio = isAudioMime(f.type) || AUDIO_EXT.test(f.name) || sniffQuiet(bytes) === "audio-sig";
+      const signature = new Uint8Array(await f.slice(0, 12).arrayBuffer());
+      const isAudio =
+        isAudioMime(f.type) || AUDIO_EXT.test(f.name) || sniffQuiet(signature) === "audio-sig";
       try {
         const limit = isAudio ? maxAudio : maxSource;
-        if (bytes.byteLength > limit) {
+        if (f.size > limit) {
           rejected.push({ name: f.name, reason: `File exceeds the ${(limit / 1_048_576).toFixed(0)} MB limit` });
           continue;
         }
+        const bytes = new Uint8Array(await f.arrayBuffer());
         const { kind, mime } = sniff(bytes, f.type || "application/octet-stream");
         parsed.push({ name: f.name || mime.replace("/", "."), mimeType: mime, bytes, kind });
         if (kind === "audio") sawAudio = true;

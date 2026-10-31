@@ -7,13 +7,12 @@ import { prisma } from "@/lib/db/prisma";
 
 const patchSchema = z.object({
   name: z.string().min(1).max(120).optional(),
-  email: z.string().email().max(200).optional(), // handled by auth email change flow
   language: z.enum(["en", "ar"]).optional(),
   appearanceMode: z.enum(["light", "dark"]).optional(),
   accentPalette: z
     .enum(["rose", "lavender", "peach", "berry", "mint", "sky", "plum"])
     .optional(),
-});
+}).strict();
 
 /** GET /api/profile — session user + preferences + counts. */
 export async function GET() {

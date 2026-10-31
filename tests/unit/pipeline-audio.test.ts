@@ -137,22 +137,86 @@ describe("audio pipeline source references", () => {
       .mockResolvedValueOnce(JSON.stringify({ notes: "pdf analysis" }))
       .mockResolvedValueOnce(JSON.stringify(summary))
       .mockResolvedValueOnce(JSON.stringify({ analyzed: [], missing: [], wrong: [], unreadable: [] }));
+    const warningSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    const result = await runPipeline({
-      assets: [{
-        id: "pdf-1",
-        kind: "pdf",
-        mime: "application/pdf",
-        bytes: new Uint8Array([37, 80, 68, 70]),
-        position: 0,
-      }],
-      language: "en",
-      style: "comprehensive",
-      title: "PDF source",
-      storage,
-      onStage: async () => {},
-    });
+    try {
+      const result = await runPipeline({
+        assets: [{
+          id: "pdf-1",
+          kind: "pdf",
+          mime: "application/pdf",
+          bytes: new Uint8Array([37, 80, 68, 70]),
+          position: 0,
+        }],
+        language: "en",
+        style: "comprehensive",
+        title: "PDF source",
+        storage,
+        onStage: async () => {},
+      });
 
-    expect(result.sourceWords).toBeNull();
+      expect(result.sourceWords).toBeNull();
+      expect(result.coverageAudit).toEqual({
+        completed: false,
+        error: "Coverage audit skipped because no text or transcript excerpts were available.",
+      });
+      expect(gemini.interactionText).toHaveBeenCalledTimes(2);
+      expect(warningSpy).toHaveBeenCalledOnce();
+    } finally {
+      warningSpy.mockRestore();
+    }
+  });
+
+  it("records a failed coverage audit while preserving the validated draft", async () => {
+    gemini.interactionText.mockReset();
+    gemini.interactionText
+      .mockResolvedValueOnce(JSON.stringify({ notes: "analysis" }))
+      .mockResolvedValueOnce(JSON.stringify(summary))
+      .mockRejectedValueOnce(new Error("provider unavailable"));
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const result = await runPipeline({
+        assets: [{
+          id: "text-1",
+          kind: "text",
+          text: "A source paragraph.",
+          position: 0,
+        }],
+        language: "en",
+        style: "comprehensive",
+        title: "Lecture",
+        storage,
+        onStage: async () => {},
+      });
+
+      expect(result.content.title).toBe("Lecture notes");
+      expect(result.coverageAudit).toEqual({
+        completed: false,
+        error: "provider unavailable",
+      });
+      expect(errorSpy).toHaveBeenCalledOnce();
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("fails explicitly when an audio asset has no Files API URI", async () => {
+    await expect(
+      runPipeline({
+        assets: [{
+          id: "audio-1",
+          kind: "audio",
+          mime: "audio/mpeg",
+          position: 0,
+        }],
+        language: "en",
+        style: "comprehensive",
+        title: "Lecture",
+        storage,
+        onStage: async () => {},
+      }),
+    ).rejects.toThrow("A lecture recording could not be uploaded for transcription");
+    expect(gemini.transcribeAudio).not.toHaveBeenCalled();
   });
 });

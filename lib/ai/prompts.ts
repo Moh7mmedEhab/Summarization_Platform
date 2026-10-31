@@ -22,7 +22,8 @@ GROUNDING AND HONESTY RULES (absolute):
 - Use only references you can actually derive from the given material metadata
   (PDF page numbers, paragraph indices, image numbers, transcript timestamps).
   When no reliable reference exists, omit it — do not guess. For timestamp
-  references from a recording, include its supplied filename in "label".
+  references from a recording, and page references from a PDF, include its
+  supplied filename in "label".
 - If the lecturer audio contradicts the written material, keep BOTH in a single
   emphasis entry's "conflict" field; never silently pick one side.
 - If a part is unreadable or ambiguous, put it in coverage.unreadable. If whole
@@ -62,6 +63,7 @@ from the written material; set confidence between 0 and 1.
 Points must be detailed (complete sentences that preserve the source's meaning).
 
 REFERENCE LISTS: kind "page" uses start=first page, end=last page (1-based);
+"label" is the supplied source filename when needed to distinguish source files;
 "paragraph" uses start=paragraph index (1-based, continuing across the whole
 source); "image" uses start=the image number in the given order; "timestamp"
 uses start/end in SECONDS into the recording and label=the supplied recording

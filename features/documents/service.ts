@@ -53,46 +53,62 @@ export async function createDocument(
     throw new DomainError("Provide pasted text or at least one file", "invalid");
   }
 
-  return prisma.$transaction(async (tx) => {
-    const doc = await tx.document.create({
-      data: {
-        userId,
-        title: input.title.slice(0, 300),
-        description: input.description?.slice(0, 2000),
-        inputType: inputTypeOf(files, hasText),
-        status: "draft",
-      },
+  const storedKeys: string[] = [];
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const doc = await tx.document.create({
+        data: {
+          userId,
+          title: input.title.slice(0, 300),
+          description: input.description?.slice(0, 2000),
+          inputType: inputTypeOf(files, hasText),
+          status: "draft",
+        },
+      });
+      let position = 0;
+      if (hasText) {
+        await tx.sourceAsset.create({
+          data: {
+            documentId: doc.id,
+            assetType: "text",
+            position: position++,
+            extractedText: input.text,
+            mimeType: "text/plain",
+            fileSize: Buffer.byteLength(input.text!, "utf8"),
+          },
+        });
+      }
+      for (const f of files) {
+        const key = userStorageKey(userId, doc.id, f.name);
+        storedKeys.push(key);
+        await storage.put(key, f.bytes);
+        await tx.sourceAsset.create({
+          data: {
+            documentId: doc.id,
+            assetType: f.kind,
+            position: position++,
+            originalFilename: f.name.slice(0, 300),
+            mimeType: f.mimeType,
+            fileSize: f.bytes.byteLength,
+            storageKey: key,
+          },
+        });
+      }
+      return { documentId: doc.id };
     });
-    let position = 0;
-    if (hasText) {
-      await tx.sourceAsset.create({
-        data: {
-          documentId: doc.id,
-          assetType: "text",
-          position: position++,
-          extractedText: input.text,
-          mimeType: "text/plain",
-          fileSize: Buffer.byteLength(input.text!, "utf8"),
-        },
-      });
-    }
-    for (const f of files) {
-      const key = userStorageKey(userId, doc.id, f.name);
-      await storage.put(key, f.bytes);
-      await tx.sourceAsset.create({
-        data: {
-          documentId: doc.id,
-          assetType: f.kind,
-          position: position++,
-          originalFilename: f.name.slice(0, 300),
-          mimeType: f.mimeType,
-          fileSize: f.bytes.byteLength,
-          storageKey: key,
-        },
-      });
-    }
-    return { documentId: doc.id };
-  });
+  } catch (error) {
+    const cleanupResults = await Promise.allSettled(storedKeys.map((key) => storage.remove(key)));
+    cleanupResults.forEach((result) => {
+      if (result.status === "rejected") {
+        console.error(
+          `[storage] failed to clean up an upload after document creation failed: ${
+            result.reason instanceof Error ? result.reason.message : result.reason
+          }`,
+        );
+      }
+    });
+    throw error;
+  }
 }
 
 export async function getOwnedDocument(
@@ -234,11 +250,20 @@ export async function deleteDocument(userId: string, documentId: string): Promis
   });
   if (!doc) throw new DomainError("Document not found", "not_found");
   await prisma.document.delete({ where: { id: documentId } });
-  await Promise.all(
-    (doc.SourceAssets.map((a) => a.storageKey).filter(Boolean) as string[]).map((k) =>
-      storage.remove(k).catch(() => undefined),
+  const removalResults = await Promise.allSettled(
+    (doc.SourceAssets.map((a) => a.storageKey).filter(Boolean) as string[]).map((key) =>
+      storage.remove(key),
     ),
   );
+  removalResults.forEach((result) => {
+    if (result.status === "rejected") {
+      console.error(
+        `[storage] failed to remove a private file after document deletion: ${
+          result.reason instanceof Error ? result.reason.message : result.reason
+        }`,
+      );
+    }
+  });
 }
 
 export async function assertOwned(documentId: string, userId: string): Promise<void> {
@@ -262,28 +287,33 @@ export async function startSummarization(
       "invalid",
     );
   }
-  // AI abuse protection: cap concurrent open jobs per user.
-  const openJobs = await prisma.processingJob.count({
-    where: { userId, status: { in: ["queued", "running"] } },
-  });
-  if (openJobs >= 3) {
-    throw new DomainError(
-      "Too many jobs processing right now — wait for one to finish",
-      "conflict",
-    );
-  }
   try {
-    const job = await prisma.processingJob.create({
-      data: {
-        documentId,
-        userId,
-        type: "summarize",
-        payload: { language: input.language, style: input.style },
-        mutex: documentId,
-      },
+    return await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM "user" WHERE id = ${userId} FOR UPDATE
+      `;
+      const openJobs = await tx.processingJob.count({
+        where: { userId, status: { in: ["queued", "running"] } },
+      });
+      if (openJobs >= 3) {
+        throw new DomainError(
+          "Too many jobs processing right now — wait for one to finish",
+          "conflict",
+        );
+      }
+
+      const job = await tx.processingJob.create({
+        data: {
+          documentId,
+          userId,
+          type: "summarize",
+          payload: { language: input.language, style: input.style },
+          mutex: documentId,
+        },
+      });
+      await tx.document.update({ where: { id: documentId }, data: { status: "processing" } });
+      return { jobId: job.id };
     });
-    await prisma.document.update({ where: { id: documentId }, data: { status: "processing" } });
-    return { jobId: job.id };
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       throw new DomainError("This document is already processing", "conflict");
