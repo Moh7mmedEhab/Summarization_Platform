@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { storage, userStorageKey } from "@/lib/storage/storage";
@@ -52,11 +53,52 @@ export async function createDocument(
     throw new DomainError("Provide pasted text or at least one file", "invalid");
   }
 
+  // Explicit id so files can be written to storage under the final key BEFORE
+  // any database work — no file I/O inside the transaction.
+  const documentId = crypto.randomUUID();
   const storedKeys: string[] = [];
   try {
-    return await prisma.$transaction(async (tx) => {
-      const doc = await tx.document.create({
+    // 1) Large I/O first, outside any interactive transaction: a failed write
+    //    here means nothing was persisted, so there are no rows to clean up.
+    // Keys are computed once and reused in the rows below.
+    const preparedFiles = files.map((f) => {
+      const key = userStorageKey(userId, documentId, f.name);
+      storedKeys.push(key);
+      return { f, key };
+    });
+    for (const { f, key } of preparedFiles) {
+      await storage.put(key, f.bytes);
+    }
+
+    // 2) Short transaction: document row + asset rows in one batch, no I/O.
+    let position = 0;
+    const assetRows: Prisma.SourceAssetCreateManyInput[] = [];
+    if (hasText) {
+      assetRows.push({
+        documentId,
+        assetType: "text",
+        position: position++,
+        extractedText: input.text,
+        mimeType: "text/plain",
+        fileSize: Buffer.byteLength(input.text!, "utf8"),
+      });
+    }
+    for (const { f, key } of preparedFiles) {
+      assetRows.push({
+        documentId,
+        assetType: f.kind,
+        position: position++,
+        originalFilename: f.name.slice(0, 300),
+        mimeType: f.mimeType,
+        fileSize: f.bytes.byteLength,
+        storageKey: key,
+      });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.document.create({
         data: {
+          id: documentId,
           userId,
           title: input.title.slice(0, 300),
           description: input.description?.slice(0, 2000),
@@ -64,37 +106,10 @@ export async function createDocument(
           status: "draft",
         },
       });
-      let position = 0;
-      if (hasText) {
-        await tx.sourceAsset.create({
-          data: {
-            documentId: doc.id,
-            assetType: "text",
-            position: position++,
-            extractedText: input.text,
-            mimeType: "text/plain",
-            fileSize: Buffer.byteLength(input.text!, "utf8"),
-          },
-        });
-      }
-      for (const f of files) {
-        const key = userStorageKey(userId, doc.id, f.name);
-        storedKeys.push(key);
-        await storage.put(key, f.bytes);
-        await tx.sourceAsset.create({
-          data: {
-            documentId: doc.id,
-            assetType: f.kind,
-            position: position++,
-            originalFilename: f.name.slice(0, 300),
-            mimeType: f.mimeType,
-            fileSize: f.bytes.byteLength,
-            storageKey: key,
-          },
-        });
-      }
-      return { documentId: doc.id };
+      await tx.sourceAsset.createMany({ data: assetRows });
     });
+
+    return { documentId };
   } catch (error) {
     const cleanupResults = await Promise.allSettled(storedKeys.map((key) => storage.remove(key)));
     cleanupResults.forEach((result) => {

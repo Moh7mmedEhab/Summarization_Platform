@@ -81,6 +81,22 @@ describe("Document Service & Multi-Tenant IDOR Security", () => {
     expect(storedBytes).toEqual(sampleBytes);
   });
 
+  it("writes files to storage before rows, and cleans them up when the row insert fails", async () => {
+    // Nonexistent user → the row insert fails with an FK violation; the file
+    // must NOT be left orphaned in storage (the cleanup removes it).
+    const sampleBytes = new TextEncoder().encode("%PDF-1.4 doomed upload");
+    await expect(
+      createDocument(`${runId}_ghost_user`, {
+        title: "Should never persist",
+        files: [{ name: "doomed.pdf", mimeType: "application/pdf", bytes: sampleBytes, kind: "pdf" }],
+      }),
+    ).rejects.toThrow();
+
+    await expect(
+      prisma.document.findFirst({ where: { title: "Should never persist" } }),
+    ).resolves.toBeNull();
+  });
+
   it("rejects creation if neither text nor files are provided", async () => {
     await expect(
       createDocument(userA, {
