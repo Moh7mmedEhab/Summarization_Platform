@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { localPrivateStorage } from "@/lib/storage/storage";
 import { runPipeline, type PreparedAsset } from "@/lib/ai/pipeline";
 import { saveSummaryForJob } from "@/lib/ai/save-summary";
+import { persistTranscripts } from "@/lib/ai/persist-transcripts";
 import { uploadGeminiFile } from "@/lib/ai/gemini/client";
 import { estimateAudioDuration } from "@/lib/upload/audio";
 import type { SourceKind, SummaryStyle } from "@/generated/prisma/enums";
@@ -129,19 +130,8 @@ async function processJob(jobId: string, signal: AbortSignal): Promise<void> {
     signal,
   });
 
-  for (const transcript of result.transcripts) {
-    const lastSegment = transcript.segments.at(-1);
-    await prisma.sourceAsset.update({
-      where: { id: transcript.assetId },
-      data: {
-        extractedText: transcript.segments.map((segment) => segment.text).join("\n\n"),
-        metadata: {
-          segments: transcript.segments.slice(0, 4000),
-          durationSec: lastSegment?.end ?? 0,
-        },
-      },
-    });
-  }
+  // Persist transcripts: full text on the asset; bounded, honest metadata.
+  await persistTranscripts(result.transcripts);
 
   await report("saving", 97);
   await saveSummaryForJob({
