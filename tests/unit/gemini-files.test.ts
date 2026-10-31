@@ -53,7 +53,10 @@ describe("Gemini Files API uploads", () => {
       const upload = uploadGeminiFile(new Uint8Array([1]), "audio/mpeg", "lecture.mp3");
       await vi.advanceTimersByTimeAsync(5_000);
       await expect(upload).resolves.toBe("https://generativelanguage.googleapis.com/files/lecture");
-      expect(filesApi.get).toHaveBeenCalledWith({ name: "files/lecture" });
+      expect(filesApi.get).toHaveBeenCalledWith({
+        name: "files/lecture",
+        config: { abortSignal: undefined },
+      });
 
       filesApi.upload.mockResolvedValue({
         name: "files/broken",

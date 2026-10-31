@@ -55,6 +55,7 @@ npm run worker       # background jobs worker (run in a second terminal)
 | `MAX_UPLOAD_TOTAL_BYTES` | | `104857600` (100 MB) | Cap on one upload's files + text combined |
 | `AUDIO_MAX_DURATION_SEC` | | `10800` (3 h) | Cap on lecture recording length |
 | `WORKER_POLL_INTERVAL_MS` | | `2000` | Worker claim-loop poll interval |
+| `JOB_TIMEOUT_MS` | | `900000` (15 min) | Per-job timeout; provider calls are aborted after it |
 
 ### Migrations
 

@@ -28,7 +28,16 @@ class AudioLimitError extends Error {
 
 let stopping = false;
 
-async function loadAssets(documentId: string): Promise<PreparedAsset[]> {
+/** Binary assets up to this size are inlined base64 into requests; larger ones go through the Files API. */
+const MAX_INLINE_BYTES = 12 * 1024 * 1024;
+
+/**
+ * Loads assets ONE AT A TIME (sequential reads) so a multi-file document never
+ * needs more than one file on disk in memory simultaneously. Binary assets
+ * above MAX_INLINE_BYTES are uploaded to the Files API and referenced by URI,
+ * so their bytes are released instead of being retained for every request.
+ */
+async function loadAssets(documentId: string, signal?: AbortSignal): Promise<PreparedAsset[]> {
   const doc = await prisma.document.findUnique({
     where: { id: documentId },
     include: {
@@ -49,11 +58,9 @@ async function loadAssets(documentId: string): Promise<PreparedAsset[]> {
     try {
       if (asset.storageKey) {
         const bytes = await localPrivateStorage.get(asset.storageKey);
-        // Audio always uses the Files API; large PDFs avoid oversized inline requests.
-        if (
-          asset.assetType === "audio" ||
-          (asset.assetType === "pdf" && bytes.byteLength > 12 * 1024 * 1024)
-        ) {
+        // Audio always uses the Files API; oversized binaries (PDF/image)
+        // avoid huge inline base64 in every request.
+        if (asset.assetType === "audio" || (asset.mimeType && bytes.byteLength > MAX_INLINE_BYTES && asset.assetType !== "text")) {
           // Duration gate BEFORE any upload to Gemini: refuse long recordings
           // with a clear message instead of burning a transcription budget.
           if (asset.assetType === "audio") {
@@ -63,13 +70,13 @@ async function loadAssets(documentId: string): Promise<PreparedAsset[]> {
               throw new AudioLimitError(asset.originalFilename ?? asset.id, est, maxSec);
             }
           }
-          const mimeType = asset.mimeType ?? (asset.assetType === "pdf" ? "application/pdf" : undefined);
-          if (!mimeType) throw new Error(`Missing MIME type for stored asset ${asset.id}`);
+          if (!asset.mimeType) throw new Error(`Missing MIME type for stored asset ${asset.id}`);
           prepared.uri = await uploadGeminiFile(
             bytes,
-            mimeType,
+            asset.mimeType,
             asset.originalFilename ?? asset.assetType,
-          );
+            { signal },
+          ); // `bytes` is a loop-local; after this iteration they are reclaimable
         } else if (asset.assetType !== "text") {
           prepared.bytes = bytes;
         }
@@ -84,9 +91,18 @@ async function loadAssets(documentId: string): Promise<PreparedAsset[]> {
 
 type SummarizePayload = { language?: "en" | "ar"; style?: string };
 
-async function processJob(jobId: string): Promise<void> {
-  const report = (stage: string, percent: number) => progress(jobId, { stage, percent });
-  const job = await prisma.processingJob.findUniqueOrThrow({ where: { id: jobId } });
+async function processJob(jobId: string, signal: AbortSignal): Promise<void> {
+  // Progress is best-effort: a lost job row or transient DB hiccup must never
+  // fail a healthy job. Every report is awaited, and its errors are swallowed.
+  const report = async (stage: string, percent: number) => {
+    try {
+      await progress(jobId, { stage, percent });
+    } catch (e) {
+      console.error(`[worker] progress update failed for job ${jobId}: ${(e as Error).message}`);
+    }
+  };
+  const job = await prisma.processingJob.findUnique({ where: { id: jobId } });
+  if (!job) throw new Error(`job ${jobId} vanished (deleted with its document)`);
   const payload = (job.payload ?? {}) as SummarizePayload;
   const language = payload.language === "ar" ? "ar" : "en";
   const style = ["comprehensive", "key_points", "paragraph", "exam_prep"].includes(
@@ -96,10 +112,11 @@ async function processJob(jobId: string): Promise<void> {
     : "comprehensive";
 
   await report("preparing", 2);
-  await prisma.document.update({ where: { id: job.documentId }, data: { status: "processing" } });
+  await prisma.document.updateMany({ where: { id: job.documentId }, data: { status: "processing" } });
 
-  const doc = await prisma.document.findUniqueOrThrow({ where: { id: job.documentId } });
-  const assets = await loadAssets(job.documentId);
+  const doc = await prisma.document.findUnique({ where: { id: job.documentId } });
+  if (!doc) throw new Error(`document ${job.documentId} vanished`);
+  const assets = await loadAssets(job.documentId, signal);
 
   const result = await runPipeline({
     assets,
@@ -108,6 +125,7 @@ async function processJob(jobId: string): Promise<void> {
     title: doc.title,
     storage: localPrivateStorage,
     onStage: report,
+    signal,
   });
 
   for (const transcript of result.transcripts) {
@@ -158,6 +176,14 @@ async function claimAndProcess(): Promise<void> {
   const job = await claimJob();
   if (!job) return;
   console.log(`[worker] processing job ${job.id} (attempt ${job.attempts}) document ${job.documentId}`);
+  // Per-job abort: the signal is threaded into every Gemini call, so a timed
+  // out job stops its provider work instead of burning tokens forever.
+  const controller = new AbortController();
+  const timeoutMs = env().JOB_TIMEOUT_MS;
+  const timeout = setTimeout(() => {
+    console.error(`[worker] job ${job.id} exceeded ${Math.round(timeoutMs / 1000)}s — aborting provider calls`);
+    controller.abort(new Error(`job timed out after ${Math.round(timeoutMs / 1000)}s`));
+  }, timeoutMs);
   let heartbeatInProgress = false;
   const heartbeatTimer = setInterval(() => {
     if (heartbeatInProgress) return;
@@ -171,14 +197,19 @@ async function claimAndProcess(): Promise<void> {
       });
   }, 60_000);
   try {
-    await processJob(job.id);
+    await processJob(job.id, controller.signal);
     console.log(`[worker] job ${job.id} done`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`[worker] job ${job.id} failed: ${msg}`);
-    await fail(job.id, job.documentId, msg, job.attempts < job.maxAttempts);
+    try {
+      await fail(job.id, job.documentId, msg, job.attempts < job.maxAttempts);
+    } catch (failError) {
+      console.error(`[worker] fail() errored for job ${job.id}: ${(failError as Error).message}`);
+    }
   } finally {
     clearInterval(heartbeatTimer);
+    clearTimeout(timeout);
   }
 }
 
@@ -187,6 +218,11 @@ async function main(): Promise<void> {
   console.log(`[worker] started (poll every ${interval}ms)`);
   for (const sig of ["SIGINT", "SIGTERM"] as const) {
     process.on(sig, () => {
+      if (stopping) {
+        // Second signal: the operator wants out NOW — force exit.
+        console.log(`[worker] second ${sig} received — exiting immediately`);
+        process.exit(1);
+      }
       console.log(`[worker] ${sig} received — finishing current job, then exiting`);
       stopping = true;
     });

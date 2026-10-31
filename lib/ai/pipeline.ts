@@ -56,6 +56,8 @@ export type PipelineResult = {
 
 type Ctx = {
   onStage: (stage: string, percent: number) => Promise<void>;
+  /** Per-job abort signal (worker timeout/shutdown) threaded into Gemini calls. */
+  signal?: AbortSignal;
 }
 
 const MAX_TEXT_CHARS = 18_000;        // per analyze chunk
@@ -179,7 +181,7 @@ async function analyzePart(
       json: true,
       maxOutputTokens: 16_000,
     },
-    { retries: 1 },
+    { retries: 1, signal: ctx.signal },
   );
 }
 
@@ -198,9 +200,11 @@ export async function runPipeline(opts: {
   title: string;
   storage: Storage;
   onStage: Ctx["onStage"];
+  /** Per-job abort signal: threads into every Gemini call (worker timeout/shutdown). */
+  signal?: AbortSignal;
 }): Promise<PipelineResult> {
-  const { assets, storage, onStage, language, style, title } = opts;
-  const ctx: Ctx = { onStage };
+  const { assets, storage, onStage, language, style, title, signal } = opts;
+  const ctx: Ctx = { onStage, signal };
 
   await onStage("preparing", 3);
 
@@ -219,7 +223,7 @@ export async function runPipeline(opts: {
   for (const asset of transcriptAssets) {
     await onStage("transcribing lecture", 8);
     try {
-      const segments = await transcribeAudio(asset.uri, asset.mime);
+      const segments = await transcribeAudio(asset.uri, asset.mime, undefined, { signal });
       if (segments.length === 0) {
         throw new Error("No timestamped speech was returned for this recording");
       }
@@ -367,7 +371,7 @@ export async function runPipeline(opts: {
       json: true,
       maxOutputTokens: 32_000,
     },
-    { retries: 1 },
+    { retries: 1, signal },
   );
   const composed = SummaryContent.parse(parseJsonOrThrow(composedRaw, "compose"));
   // The requested language is authoritative (schema only catches bad echoes).
@@ -434,7 +438,7 @@ export async function runPipeline(opts: {
           json: true,
           maxOutputTokens: 8_000,
         },
-        { retries: 1 },
+        { retries: 1, signal },
       );
       audit = JSON.parse(auditRaw);
       auditCompleted = auditLimitations.length === 0;
@@ -472,7 +476,7 @@ export async function runPipeline(opts: {
           json: true,
           maxOutputTokens: 32_000,
         },
-        { retries: 1 },
+        { retries: 1, signal },
       );
       const repaired = SummaryContent.safeParse(parseJsonOrThrow(recoveryRaw, "recovery"));
       if (repaired.success) final = repaired.data;
@@ -494,7 +498,7 @@ export async function runPipeline(opts: {
           json: true,
           maxOutputTokens: 32_000,
         },
-        { retries: 1 },
+        { retries: 1, signal },
       );
       const repaired = SummaryContent.safeParse(parseJsonOrThrow(recoveryRaw, "recovery"));
       if (repaired.success) final = repaired.data;

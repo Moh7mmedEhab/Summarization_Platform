@@ -65,6 +65,8 @@ describe("audio pipeline source references", () => {
     expect(gemini.transcribeAudio).toHaveBeenCalledWith(
       "https://generativelanguage.googleapis.com/files/lecture",
       "audio/mpeg",
+      undefined,
+      { signal: undefined },
     );
     expect(gemini.interactionText).toHaveBeenNthCalledWith(
       1,

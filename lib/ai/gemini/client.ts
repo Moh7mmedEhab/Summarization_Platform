@@ -24,12 +24,15 @@ export async function uploadGeminiFile(
   bytes: Uint8Array,
   mimeType: string,
   displayName: string,
+  opts: { signal?: AbortSignal; timeoutMs?: number } = {},
 ): Promise<string> {
   const client = genai();
-  const uploaded = await client.files.upload({
-    file: new Blob([bytes as BlobPart], { type: mimeType }),
-    config: { mimeType, displayName },
-  });
+  const config = { mimeType, displayName, abortSignal: opts.signal };
+  const uploaded = await failOnAbort(
+    client.files.upload({ file: new Blob([bytes as BlobPart], { type: mimeType }), config }),
+    opts,
+    "Gemini Files API upload",
+  );
   if (!uploaded.name) {
     throw new AiError("Gemini Files API upload returned no file name");
   }
@@ -37,7 +40,11 @@ export async function uploadGeminiFile(
   let info = uploaded;
   for (let attempt = 0; attempt < 24 && info.state === "PROCESSING"; attempt++) {
     await sleep(5_000);
-    info = await client.files.get({ name: uploaded.name });
+    info = await failOnAbort(
+      client.files.get({ name: uploaded.name, config: { abortSignal: opts.signal } }),
+      opts,
+      "Gemini Files API processing",
+    );
   }
   if (info.state === "FAILED") {
     throw new AiError("Gemini Files API processing failed");
@@ -58,6 +65,7 @@ export type InteractionPart =
   | { type: "document"; data: string; mime_type: string }
   | { type: "document"; uri: string; mime_type: string }
   | { type: "image"; data: string; mime_type: string }
+  | { type: "image"; uri: string; mime_type: string }
   | { type: "audio"; data: string; mime_type: string }
   | { type: "audio"; uri: string; mime_type: string };
 
@@ -96,6 +104,29 @@ function extractJson(text: string): string {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Abort-aware wrapper: if the signal fires (job timeout/cancel), fail loudly with a clear message. */
+async function failOnAbort<T>(p: Promise<T>, opts: { signal?: AbortSignal; timeoutMs?: number }, label: string): Promise<T> {
+  if (!opts.signal && !opts.timeoutMs) return p;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = opts.timeoutMs
+    ? new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new AiError(`${label} timed out after ${Math.round(opts.timeoutMs! / 1000)}s`, undefined, true)), opts.timeoutMs);
+      })
+    : undefined;
+  try {
+    return await Promise.race([p, timeout!].filter(Boolean) as Promise<T>[]);
+  } catch (e) {
+    if (isAbortError(e)) throw new AiError(`${label} was aborted (worker shutting down or job timed out)`, undefined, true);
+    throw e;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function isAbortError(e: unknown): boolean {
+  return e instanceof Error && (e.name === "AbortError" || e.name === "TimeoutError" || /abort/i.test(e.message));
+}
+
 export async function interactionText(
   params: {
     system?: string;
@@ -103,27 +134,35 @@ export async function interactionText(
     maxOutputTokens?: number;
     json?: boolean;
   },
-  opts: { retries?: number } = {},
+  opts: { retries?: number; signal?: AbortSignal } = {},
 ): Promise<string> {
   if (!hasKey()) {
     throw new AiError("GEMINI_API_KEY is not configured", 401, false);
   }
+  if (opts.signal?.aborted) throw new AiError("Gemini call was aborted before it started", undefined, true);
   const client = genai();
   const retries = opts.retries ?? 2;
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const interaction = await client.interactions.create({
-        model: env().GEMINI_MODEL,
-        system_instruction: params.system,
-        input: params.input,
-        generation_config: {
-          max_output_tokens: params.maxOutputTokens,
-          // Requests that must come back as JSON instruct it in the system prompt;
-          // keeping sampling params default (Gemini 3.6+ ignores temperature/top_p).
-        },
-      });
+      const interaction = await failOnAbort(
+        client.interactions.create(
+          {
+            model: env().GEMINI_MODEL,
+            system_instruction: params.system,
+            input: params.input,
+            generation_config: {
+              max_output_tokens: params.maxOutputTokens,
+              // Requests that must come back as JSON instruct it in the system prompt;
+              // keeping sampling params default (Gemini 3.6+ ignores temperature/top_p).
+            },
+          },
+          { fetchOptions: { signal: opts.signal } },
+        ),
+        opts,
+        "Gemini request",
+      );
       return params.json ? extractJson(interaction.output_text ?? "") : interaction.output_text ?? "";
     } catch (e) {
       lastError = e;
@@ -151,18 +190,27 @@ export async function transcribeAudio(
   fileUri: string,
   mimeType: string,
   languageHint?: string,
+  opts: { signal?: AbortSignal } = {},
 ): Promise<TranscriptSegment[]> {
+  if (opts.signal?.aborted) throw new AiError("Transcription was aborted before it started", undefined, true);
   const client = genai();
-  const interaction = await client.interactions.create({
-    model: env().GEMINI_TRANSCRIBE_MODEL,
-    input: [{ type: "audio", uri: fileUri, mime_type: mimeType }],
-    generation_config: {
-      transcription_config: {
-        language_codes: languageHint ? [languageHint === "ar" ? "ar-EG" : "en-US"] : [],
-        mode: { type: "verbatim", timestamp_granularities: ["word"] },
+  const interaction = await failOnAbort(
+    client.interactions.create(
+      {
+        model: env().GEMINI_TRANSCRIBE_MODEL,
+        input: [{ type: "audio", uri: fileUri, mime_type: mimeType }],
+        generation_config: {
+          transcription_config: {
+            language_codes: languageHint ? [languageHint === "ar" ? "ar-EG" : "en-US"] : [],
+            mode: { type: "verbatim", timestamp_granularities: ["word"] },
+          },
+        },
       },
-    },
-  });
+      { fetchOptions: { signal: opts.signal } },
+    ),
+    opts,
+    "Lecture transcription",
+  );
 
   const segments: TranscriptSegment[] = [];
   let current: TranscriptSegment | null = null;

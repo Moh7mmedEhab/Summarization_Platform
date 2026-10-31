@@ -38,6 +38,7 @@ const schema = z.object({
   UPLOAD_MAX_TEXT_CHARS: int.default(200_000),
 
   WORKER_POLL_INTERVAL_MS: int.default(2_000),
+  JOB_TIMEOUT_MS: int.default(900_000), // 15 min per job before provider calls are aborted
 });
 
 export type Env = z.infer<typeof schema>;

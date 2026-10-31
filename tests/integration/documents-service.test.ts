@@ -82,6 +82,18 @@ describe("Document Service & Multi-Tenant IDOR Security", () => {
     expect(storedBytes).toEqual(sampleBytes);
   });
 
+  it("classifies an audio-only upload as the audio kind, not text", async () => {
+    const wav = new Uint8Array([
+      0x52, 0x49, 0x46, 0x46, 0x1a, 0, 0, 0, 0x57, 0x41, 0x56, 0x45,
+    ]); // "RIFF....WAVE"
+    const { documentId } = await createDocument(userA, {
+      title: "Lecture recording",
+      files: [{ name: "lecture.mp3", mimeType: "audio/mpeg", bytes: wav, kind: "audio" }],
+    });
+    const doc = await getOwnedDocument(userA, documentId, { assets: true });
+    expect(doc.inputType).toBe("audio");
+  });
+
   it("writes files to storage before rows, and cleans them up when the row insert fails", async () => {
     // Nonexistent user → the row insert fails with an FK violation; the file
     // must NOT be left orphaned in storage (the cleanup removes it).
