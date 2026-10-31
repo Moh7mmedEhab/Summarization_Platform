@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "@/lib/db/prisma";
 import { env } from "@/lib/env";
-import { mailer, emailHtml } from "@/lib/email/mailer";
+import { emailBody, mailer, emailHtml } from "@/lib/email/mailer";
 
 /**
  * Authentication: Better Auth (email + password) on Prisma.
@@ -17,6 +17,7 @@ export const auth = betterAuth({
   trustedOrigins: [env().APP_URL],
   emailAndPassword: {
     enabled: true,
+    requireEmailVerification: true,
     minPasswordLength: 8,
     maxPasswordLength: 128,
     resetPasswordTokenExpiresIn: 3600, // one hour
@@ -30,7 +31,7 @@ export const auth = betterAuth({
           `If you did not request this, ignore this email; your password stays unchanged.`,
         html: emailHtml(
           "Reset your password",
-          `<p>A password reset was requested for <b>${user.email}</b>. The link is valid for one hour. If this wasn't you, you can safely ignore this message.</p>`,
+          emailBody`<p>A password reset was requested for <b>${user.email}</b>. The link is valid for one hour. If this wasn't you, you can safely ignore this message.</p>`,
           url,
           "Choose a new password",
         ),
@@ -50,7 +51,7 @@ export const auth = betterAuth({
           `The link is valid for 24 hours.`,
         html: emailHtml(
           "Verify your email",
-          `<p>Welcome, <b>${user.name}</b>. Confirm your address (${user.email}) to start your study library. The link is valid for 24 hours.</p>`,
+          emailBody`<p>Welcome, <b>${user.name}</b>. Confirm your address (${user.email}) to start your study library. The link is valid for 24 hours.</p>`,
           url,
           "Verify email",
         ),

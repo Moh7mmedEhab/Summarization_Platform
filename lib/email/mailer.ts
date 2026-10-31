@@ -32,7 +32,16 @@ function escapeHtml(s: string): string {
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+export function emailBody(strings: TemplateStringsArray, ...values: string[]): string {
+  let body = strings[0] ?? "";
+  values.forEach((value, index) => {
+    body += `${escapeHtml(value)}${strings[index + 1] ?? ""}`;
+  });
+  return body;
 }
 
 function eml(message: MailMessage, from: string): string {
