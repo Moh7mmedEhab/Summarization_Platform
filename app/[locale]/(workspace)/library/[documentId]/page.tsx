@@ -12,10 +12,10 @@ type Props = {
 };
 
 const statusKey = {
-  draft: "status.draft",
-  processing: "status.processing",
-  summarized: "status.summarized",
-  failed: "status.failed",
+  draft: "draft",
+  processing: "processing",
+  summarized: "summarized",
+  failed: "failed",
 } as const;
 
 const slotIcon = {
