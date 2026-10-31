@@ -139,6 +139,32 @@ describe("localPrivateStorage – put/get/stat/remove roundtrip", () => {
     expect(stat.isFile()).toBe(true);
   });
 
+  it("put() is atomic: no temp files linger next to the stored key", async () => {
+    const { localPrivateStorage } = await import("@/lib/storage/storage");
+
+    const key = "u/user1/docB/atomic.txt";
+    await localPrivateStorage.put(key, new TextEncoder().encode("atomically stored"));
+
+    const siblings = await fs.readdir(path.join(tmpDir, "u/user1/docB"));
+    expect(siblings).toEqual(["atomic.txt"]); // no ".tmp-…" leftovers after rename
+  });
+
+  it("readStream() yields the stored content (streaming read)", async () => {
+    const { localPrivateStorage } = await import("@/lib/storage/storage");
+    const { Readable } = await import("node:stream");
+
+    const key = "u/user1/docC/stream.bin";
+    const content = new Uint8Array([10, 20, 30, 40, 50]);
+    await localPrivateStorage.put(key, content);
+
+    const stream = await localPrivateStorage.readStream(key);
+    expect(stream).toBeInstanceOf(Readable);
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(chunk as Buffer);
+    const bytes = new Uint8Array(Buffer.concat(chunks));
+    expect(Array.from(bytes)).toEqual(Array.from(content));
+  });
+
   it("stat() returns correct file size", async () => {
     const { localPrivateStorage } = await import("@/lib/storage/storage");
 

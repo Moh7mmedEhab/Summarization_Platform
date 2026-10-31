@@ -25,6 +25,7 @@ const summary = {
 const storage: Storage = {
   async put() { return "test"; },
   async get() { return new Uint8Array(); },
+  async readStream() { throw new Error("not used in these tests"); },
   async stat() { return { size: 0 }; },
   async remove() {},
   pathOf() { return "test"; },

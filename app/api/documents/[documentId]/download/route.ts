@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { Readable } from "node:stream";
 import { errorResponse } from "@/lib/api/respond";
 import { getSession } from "@/lib/auth/session";
 import { DomainError, getOwnedDocument } from "@/features/documents/service";
@@ -34,10 +35,14 @@ export async function GET(request: NextRequest, { params }: Params) {
       });
     }
 
-    const bytes = await storage.get(asset.storageKey);
-    return new NextResponse(bytes as unknown as BodyInit, {
+    // Streamed with content-length: multi-MB sources never buffer entirely
+    // in the route's memory.
+    const stream = await storage.readStream(asset.storageKey);
+    const { size } = await storage.stat(asset.storageKey);
+    return new NextResponse(Readable.toWeb(stream) as unknown as ReadableStream, {
       headers: {
         "content-type": asset.mimeType ?? "application/octet-stream",
+        "content-length": String(size),
         "content-disposition": `attachment; filename="${(asset.originalFilename ?? "asset").replace(/[^\w.\- ]+/g, "_")}"`,
       },
     });

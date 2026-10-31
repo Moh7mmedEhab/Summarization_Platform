@@ -64,7 +64,7 @@ class DevMailer implements Mailer {
   readonly provider = "dev";
 
   async send(message: MailMessage): Promise<MailResult> {
-    const dir = path.join(process.cwd(), env().STORAGE_DIR, "mail-outbox");
+    const dir = path.join(env().STORAGE_DIR, "mail-outbox");
     await fs.mkdir(dir, { recursive: true });
     const name = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${
       message.to.replace(/[^a-z0-9._@-]/gi, "_")

@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
+import path from "node:path";
 
 // ---------------------------------------------------------------------------
 // Helper: re-import env() with the current process.env state.
@@ -59,11 +60,17 @@ describe("env() – valid configuration", () => {
     expect(result.EMAIL_PROVIDER).toBe("dev");
   });
 
-  it("STORAGE_DIR defaults to './storage' when not set", async () => {
+  it("STORAGE_DIR defaults to ./storage, resolved absolute (web+worker agree)", async () => {
     delete process.env.STORAGE_DIR;
     const env = await loadEnv();
     const result = env();
-    expect(result.STORAGE_DIR).toBe("./storage");
+    expect(result.STORAGE_DIR).toBe(path.resolve("./storage"));
+  });
+
+  it("MAX_UPLOAD_TOTAL_BYTES defaults to 100 MB", async () => {
+    delete process.env.MAX_UPLOAD_TOTAL_BYTES;
+    const env = await loadEnv();
+    expect(env().MAX_UPLOAD_TOTAL_BYTES).toBe(104_857_600);
   });
 
   it("APP_URL defaults to 'http://localhost:3000' when not set", async () => {

@@ -1,3 +1,4 @@
+import path from "node:path";
 import { z } from "zod";
 
 /**
@@ -24,7 +25,12 @@ const schema = z.object({
   EMAIL_SMTP_URL: z.string().optional(),
   EMAIL_FROM: z.string().default("Margins <no-reply@margins.local>"),
 
-  STORAGE_DIR: z.string().default("./storage"),
+  // Resolved to an absolute path once, so web and worker processes agree on
+  // the storage root even if started from different working directories.
+  STORAGE_DIR: z
+    .string()
+    .default("./storage")
+    .transform((v) => path.resolve(v)),
   MAX_UPLOAD_TOTAL_BYTES: int.default(104_857_600), // 100 MB across an upload's files + text
   UPLOAD_MAX_SOURCE_BYTES: int.default(52_428_800), // 50 MB
   UPLOAD_MAX_AUDIO_BYTES: int.default(52_428_800), // 50 MB
